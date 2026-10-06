@@ -1,0 +1,362 @@
+# Code Convention — Moongate
+
+This document defines coding conventions for the Moongate project. It is intentionally strict to keep the codebase consistent and readable.
+
+## 1. General Principles
+
+- Prefer clarity over cleverness.
+- Keep domain boundaries explicit.
+- Keep files small and focused.
+- Avoid hidden magic and implicit behavior.
+- Write code that is easy to reason about during debugging.
+
+## 2. Project Structure and Namespaces
+
+### 2.1 Folder-to-Namespace Rule
+
+Namespace must match folder path exactly.
+
+```
+src/Moongate.Core/Geometry/Point3D.cs                          → namespace Moongate.Core.Geometry;
+src/Moongate.Server/Services/Persistence/WorldSaveService.cs   → namespace Moongate.Server.Services.Persistence;
+tests/Moongate.Tests/Server/Services/Events/EventBusServiceTests.cs → namespace Moongate.Tests.Server.Services.Events;
+```
+
+### 2.2 Domain-First Organization
+
+Group by domain first, not by technical suffix.
+
+### 2.3 Mandatory Namespace Buckets
+
+| Bucket | Content |
+|---|---|
+| `Types` | Enums, type constants (domain-prefixed) |
+| `Data` | DTOs, records, simple data carriers |
+| `Data.Config` | Configuration models |
+| `Data.Internal.*` | Internal-only data models |
+| `Interfaces` | Contracts only |
+| `Services` | Service implementations |
+| `Extensions` | Extension members, grouped by the type they extend |
+| `Attributes` | Custom attributes |
+| `Internal` | Implementation details not part of public API |
+
+Each bucket takes a domain subfolder once it holds more than a handful of types: `Types/Accounts`,
+`Data/Sessions`, `Interfaces/Services`, `Extensions/Strings`.
+
+## 3. C# File and Type Rules
+
+- One `.cs` file must contain at most one primary type (`class`, `record`, or `enum`).
+- File name must match type name.
+- Use file-scoped namespaces.
+- Methods use block bodies (`{ }`), including single-statement methods. Do not use expression-bodied methods (`=>`).
+  This rule is enforced by `.editorconfig` (IDE0022) and the CI style check; lambda expressions and property/accessor styles are unchanged.
+- Do **not** use primary constructors.
+- Do **not** use expression-bodied constructors (`public X(...) => ...`); constructors must always have a body `{ }`.
+
+### 3.1 Indentation
+
+C# uses spaces with an indentation size and tab width of **4**, as defined in `.editorconfig`.
+Continuation lines use a single indentation level rather than alignment to the preceding expression,
+argument or declaration. The ReSharper alignment settings are explicit in `.editorconfig` and the
+solution's shared `.DotSettings` layer so Rider's formatter, inspections and the `jb` command-line
+tools use the same indentation regardless of personal alignment preferences.
+Keep Rider's indentation inspections enabled and fix the source when they report a mismatch.
+Use the shared **CSharp formatting only** profile to apply indentation, spacing, line wrapping and
+XML documentation formatting without code cleanup or member reordering:
+
+```sh
+jb cleanupcode Moongate.slnx --profile="CSharp formatting only" --include="**/*.cs" --no-build
+```
+
+## 4. Class Layout Order
+
+Inside a type, use this order:
+
+1. `const` fields
+2. `private readonly` fields (prefixed `_`)
+3. Non-readonly fields
+4. Properties
+5. Constructor(s)
+6. Public methods
+7. Protected methods
+8. Private methods
+9. `Dispose`/finalization methods (always last)
+
+### 4.1 Private Readonly Naming
+
+All `private readonly` fields must start with `_`:
+
+```csharp
+private readonly IEventBusService _eventBus;
+private readonly DirectoriesConfig _directoriesConfig;
+```
+
+### 4.2 Dispose Position
+
+If a class implements `IDisposable` or `IAsyncDisposable`, `Dispose`/`DisposeAsync` must be the last method(s) in the file.
+
+An IDE rearrange pass sorts members by kind and accessibility, which lifts `Dispose` above the methods it
+tears down. EditorConfig has no member-ordering property and `dotnet format` never reorders members, so this
+rule lives in `Moongate.slnx.DotSettings` — Rider's *Rearrange Members* reads the file layout from there — and
+`tests/Moongate.Tests/Conventions/DisposeMemberOrderTests.cs` fails the build when a formatter moves them.
+
+## 5. Interfaces
+
+- Interfaces live only under `Interfaces` namespaces.
+- Every interface, and every member it declares, carries XML docs (`///`) **written in English**. Release
+  builds emit the documentation file and the NuGet packages ship it, so these comments are the public
+  reference for the libraries, not notes for the next reader of the source.
+- Interface names must use `I` prefix and clear domain naming.
+
+### 5.1 XML Documentation Layout
+
+Use separate lines for opening tags, documentation text and closing tags. This applies to XML
+documentation throughout the codebase, not only interfaces. Keep self-closing references such as
+`<see cref="IDisposable" />`, `<paramref name="value" />` and `<inheritdoc />` intact.
+
+```csharp
+/// <summary>
+///     Numeric value of the Debug level.
+/// </summary>
+```
+
+The XMLDOC rules in `.editorconfig` control this layout in Rider/ReSharper. To apply them without
+reformatting code or rearranging members, use the shared **XML documentation only** cleanup profile:
+
+```sh
+jb cleanupcode Moongate.slnx --profile="XML documentation only" --no-build
+```
+
+## 6. Enums
+
+- Enums must live under a `Types` namespace, in the subfolder of the domain they belong to.
+- Always include the domain in the enum name.
+
+```csharp
+// Types/LogLevelType.cs
+namespace Moongate.Core.Types;
+public enum LogLevelType { ... }
+
+// Types/Accounts/AccountType.cs
+namespace Moongate.Server.Core.Types.Accounts;
+public enum AccountType { Regular = 0, GameMaster = 1, Administrator = 2 }
+```
+
+- A flags enum gives every member an explicit value and declares a zero member, so that
+  `HasFlag` cannot answer true for an unset value.
+
+## 7. Strings
+
+- Empty strings have no imposed form. Neither `""` nor `string.Empty` is the standard: leave whichever
+  a file already uses and do not convert in either direction.
+
+## 8. Logging
+
+- Use Serilog **statically** via `Log.ForContext<T>()`. Do not inject `ILogger<T>` via DI.
+- Declare the logger as a `private readonly` field initialized inline.
+
+```csharp
+private readonly ILogger _logger = Log.ForContext<MyService>();
+```
+
+- Where a project namespace shadows a framework type, qualify or alias rather than renaming the namespace.
+  `Moongate.Server.Services.Console` shadows `System.Console`, so that code writes `System.Console.WriteLine`.
+- Use static message templates; never use string interpolation for structured logs.
+- Keep template shape stable across calls.
+
+## 9. Event Bus
+
+- All event types must implement `IMoongateEvent`.
+- `IMoongateEventBus` declares the bus: `Subscribe<TEvent>` returns an idempotent `IDisposable`, and
+  `PublishAsync<TEvent>` emits. Services inject `IEventBusService`, which is that contract plus
+  `IMoongateService`, so both reach the one container-owned bus.
+- Handlers run sequentially in registration order and the publisher awaits each. One failing handler is
+  logged and does not skip the handlers after it. Events are routed by exact type, and a late subscriber
+  never receives an earlier event.
+- `SubscribeAll` receives every published event regardless of type, dispatched after that event's typed
+  subscribers, and follows the same sequential-await, idempotent-disposal, fault-isolated rules.
+
+- A service subscribes in `StartAsync` and disposes the token in `StopAsync`, never in the constructor:
+  a singleton's constructor runs only when something resolves it, so a constructor subscription is
+  silently absent until then.
+
+```csharp
+internal sealed class MySubscriber : IMoongateStartupService
+{
+    private readonly IEventBusService _eventBus;
+    private IDisposable? _subscription;
+
+    public MySubscriber(IEventBusService eventBus)
+    {
+        _eventBus = eventBus;
+    }
+
+    public Task StartAsync()
+    {
+        _subscription = _eventBus.Subscribe<MoongateStartedEvent>(HandleAsync);
+
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync()
+    {
+        _subscription?.Dispose();
+
+        return Task.CompletedTask;
+    }
+}
+```
+
+- Plugins subscribe from `Register` with `container.OnEvent<TEvent>(handler)`, which the container owns
+  for the lifetime of the host.
+
+## 10. Plugin System
+
+- Plugins implement `IMoongatePlugin`: a `MoongatePluginData Metadata` property and `void Register(Container)`.
+  The Id uses reverse-domain format, `com.github.author.Moongate.plugins.name`, and is case-insensitive.
+- `Register` registers services and event subscriptions. It never starts them; the host owns the container
+  and the service lifecycle.
+- Declare dependencies in `MoongatePluginData`. They are required, and a batch is validated and ordered
+  before any `Register` callback runs, so duplicate ids, missing dependencies and cycles reject the whole
+  batch rather than leaving half of it applied.
+- Disk plugins live one bundle per directory under `plugins/`, where the directory name matches the entry
+  assembly. Each bundle gets its own collectible load context; host assemblies are shared to preserve
+  contract identity, and the rest resolve privately.
+
+## 11. Startup Services / Subscribers
+
+- Services that own work across the host lifetime implement `IMoongateStartupService`, which extends `IMoongateService` with `StartAsync()` and `StopAsync()`.
+- Register them with `container.AddMoongateService<TContract, TService>(priority)`. Services start in ascending priority order and stop in reverse, so a dependency takes a lower number than its dependents; the default is `0`.
+- If an optional dependency is unavailable at startup, log a `Warning` and return cleanly — do not bring the host down. Throw only when the server cannot run without it; the bootstrap then stops every service it already started, in reverse order.
+- A service that only subscribes to events still implements `IMoongateStartupService` and subscribes in `StartAsync`, so that its subscription exists exactly while the host runs. Nothing is force-resolved from `Program.cs` to make a constructor run.
+
+## 12. Test Conventions
+
+### 12.1 Structure
+
+```
+tests/Moongate.Tests/<Domain>/<Subdomain>/<SubjectName>Tests.cs
+namespace Moongate.Tests.<Domain>.<Subdomain>;
+```
+
+Examples:
+```
+tests/Moongate.Tests/Core/Geometry/Point3DTests.cs                  → namespace Moongate.Tests.Core.Geometry;
+tests/Moongate.Tests/Server/Services/Events/EventBusServiceTests.cs → namespace Moongate.Tests.Server.Services.Events;
+tests/Moongate.Tests/TestSupport/Persistence/WorldSaveFixture.cs    → namespace Moongate.Tests.TestSupport.Persistence;
+```
+
+Integration, contract and performance tests go in their own folder rather than beside unit tests:
+`tests/Moongate.Tests/Integration/<Domain>/`. Nothing lives in the test project root.
+A test that needs PostgreSQL or Redis must sit in an `Integration`, `Performance` or `Stress`
+namespace, or carry the matching `Category` trait: `scripts/test.sh fast` leaves tests out by
+that rule only, so a database test placed elsewhere breaks the fast suite.
+
+### 12.2 Naming
+
+- File: `<SubjectName>Tests.cs`
+- Class: `<SubjectName>Tests`
+- One main test class per file.
+- Test method style: `Method_Scenario_ExpectedResult`.
+
+### 12.3 Test Support
+
+- Shared fakes, builders, and fixtures go in `tests/Moongate.Tests/TestSupport/<Domain>/`, mirroring the
+  domain layout of the tests that use them.
+- `tests/Moongate.Tests/Support/` is the older location and still holds part of this material. Put new
+  helpers in `TestSupport/`, and move an existing one when you are already editing it.
+- Do not mix reusable test infrastructure into domain test files.
+
+### 12.4 InternalsVisibleTo
+
+Projects expose internals to their own test project:
+
+```xml
+<InternalsVisibleTo Include="Moongate.Tests" />
+```
+
+`Moongate.Persistence`, `Moongate.Server` and `Moongate.Ultima` grant it to `Moongate.Tests`;
+`Moongate.Network` grants it to `Moongate.Network.Tests`.
+
+## 13. Branching and Commits
+
+### 13.1 Feature Workflow
+
+Every feature takes the same three steps, in this order. None of them is optional.
+
+1. **Open an issue first.** It describes the feature in detail: what it does, why it is wanted, how it
+   behaves at its edges, and how it will be verified. The issue is the specification the work is judged
+   against, so a title and a sentence are not an issue.
+2. **Branch from `develop`**, named `feature/<short-name>`, carrying that one feature and nothing else.
+3. **Open a pull request into `develop`** and link the issue. Work reaches `develop` through that
+   request, never through a direct push.
+
+Fixes follow the same path under `fix/<short-name>`. `main` receives `develop` at release time and takes
+nothing else.
+
+### 13.2 Commit Messages
+
+- Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, etc.). Release versions are
+  derived from them, so the type and any `!` breaking marker decide the next version number.
+- Scope commits to the affected subsystem: `feat(persistence):`, `fix(network):`, `test(eventbus):`.
+- Write every commit in English, subject and body alike.
+- Never add AI attribution anywhere: no `Co-Authored-By: Claude` trailer, and no generated-with line in a
+  commit, pull request, issue or release note.
+
+### 13.3 Release Documentation Review
+
+Before **every release**, including patch releases, verify that the documentation matches the exact
+code being released. This check is mandatory.
+
+- Review the repository and library READMEs, `docs/`, public API XML comments, examples and release
+  notes against the implementation, including configuration defaults, commands and deployment steps.
+- Update outdated or missing documentation, remove claims about unsupported behavior, and verify
+  documented commands and runnable examples against the release candidate.
+- Record the review and relevant verification results in the release pull request. Resolve all
+  documentation/code mismatches before publishing the release.
+
+## 14. Non-Negotiable Hygiene
+
+- No dead code.
+- No TODO comments without a tracked follow-up.
+- No inconsistent naming across domains.
+- Keep warnings under control; do not normalize noisy warnings. The build is at zero warnings, so a new
+  one is a regression.
+- No primary constructors.
+- No expression-bodied constructors.
+
+## 15. Additional Conventions
+
+**Nullability**
+- Use nullable reference types consistently.
+- Avoid null-forgiving (`!`) unless explicitly justified.
+
+**Async naming**
+- Async methods must end with `Async`.
+- Include `CancellationToken` on I/O-bound public async methods.
+
+**`ConfigureAwait(false)`**
+- Use it in the library projects: `Moongate.Core`, `Moongate.Network`, `Moongate.Persistence`,
+  `Moongate.Scripting`, `Moongate.Server.Core` and `Moongate.Server` (game loop, dispatcher, hosting). Some of
+  their code is waited on synchronously (`Dispose` calling `StopAsync().GetAwaiter().GetResult()`, Lua), and a
+  caller with a `SynchronizationContext` (a test runner, a future UI host) must not be blocked by it.
+- Do not use it in game code (`Moongate.Server.Ultima`) or plugins. The server installs no
+  `SynchronizationContext`, so it changes nothing there. It never brings a handler back to the game loop
+  either: after an `await` the code runs on a pool thread, and state changes go through `RunOnGameLoopAsync`.
+
+**Exception handling**
+- Guard the arguments of public API surface with `ArgumentNullException.ThrowIfNull` and friends.
+- Do **not** guard constructor dependencies that arrive from the container: let the container fail on a
+  missing registration instead of repeating the check in every service.
+- Do not swallow exceptions silently.
+
+**Collection exposure**
+- Expose `IReadOnlyList<>` or `IReadOnlyDictionary<>` where mutation by callers is not intended.
+
+**No magic numbers**
+- Replace protocol/timing literals with named constants.
+
+**Using directives**
+- `System` namespaces first, then every other namespace in alphabetical order. Third-party and project
+  namespaces are not separated: `DryIoc` sits between `ConsoleAppFramework` and `Moongate.Core`.
+- Add using aliases when a name is ambiguous across two libraries in scope.
