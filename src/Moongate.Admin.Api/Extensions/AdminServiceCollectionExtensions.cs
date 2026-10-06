@@ -12,6 +12,7 @@ using Moongate.Admin.Api.Services.Config;
 using Moongate.Admin.Api.Services.Documentation;
 using Moongate.Admin.Api.Services.Errors;
 using Moongate.Admin.Api.Services.Upstream;
+using Moongate.Admin.Api.Services.Serialization;
 using Moongate.Admin.Api.Types.Authentication;
 
 namespace Moongate.Admin.Api.Extensions;
@@ -77,6 +78,7 @@ public static class AdminServiceCollectionExtensions
         services.AddOpenApi(options =>
             {
                 options.AddSchemaTransformer<AdminCredentialSchemaTransformer>();
+                options.AddSchemaTransformer<AdminAccountSchemaTransformer>();
                 options.AddDocumentTransformer<AdminOpenApiTransformer>();
             }
         );
@@ -89,6 +91,7 @@ public static class AdminServiceCollectionExtensions
             {
                 options.SerializerOptions.RespectNullableAnnotations = true;
                 options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+                options.SerializerOptions.Converters.Add(new AdminAccountTypeJsonConverter());
                 options.SerializerOptions.Converters.Add(
                     new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)
                 );

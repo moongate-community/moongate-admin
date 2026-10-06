@@ -36,6 +36,12 @@ public sealed class FakeAdminAccountsService : AdminAccounts.AdminAccountsBase
             throw new RpcException(new Status(StatusCode.DeadlineExceeded, "response lost after commit"));
         }
 
+        if (_authority.MalformedCreateResponse)
+        {
+            var malformed = summary.Clone();
+            malformed.CreatedAt = null;
+            return Task.FromResult(malformed);
+        }
         return Task.FromResult(summary);
     }
 }

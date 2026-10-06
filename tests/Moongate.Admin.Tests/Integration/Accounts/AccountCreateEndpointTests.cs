@@ -105,4 +105,40 @@ public class AccountCreateEndpointTests
         Assert.True(body.GetProperty("canAccessApi").GetBoolean());
         Assert.True(grpc.Authority.LastCreate?.HasAccountType);
     }
+
+    [Theory]
+    [InlineData("regular, gameMaster")]
+    [InlineData("regular, regular")]
+    public async Task Create_CompositeRole_RejectsBeforeRpc(string role)
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync();
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        var response = await client.PostAsJsonAsync("/api/accounts", new
+        {
+            username = "New",
+            password = "fixture-only",
+            accountType = role
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, grpc.Authority.CreateCallCount);
+    }
+
+    [Fact]
+    public async Task Create_MalformedSuccess_ReportsUncertaintyWithoutRetry()
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync();
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        grpc.Authority.MalformedCreateResponse = true;
+        var response = await client.PostAsJsonAsync("/api/accounts", new { username = "CreatedOnce", password = "fixture-only" });
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("mutationOutcomeUnknown").GetBoolean());
+        Assert.Equal(1, grpc.Authority.CreateCallCount);
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/accounts");
+        Assert.Equal("CreatedOnce", list.GetProperty("accounts")[0].GetProperty("username").GetString());
+    }
 }

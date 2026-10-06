@@ -55,6 +55,14 @@ public class OpenApiContractTests
                 .GetProperty("type")
                 .GetString()
         );
+        var roleSchema = schemas.GetProperty("AccountSummaryResponse").GetProperty("properties").GetProperty("accountType");
+        if (roleSchema.TryGetProperty("$ref", out var roleReference))
+        {
+            var name = roleReference.GetString()?.Split('/').Last() ?? throw new InvalidOperationException("Missing role schema reference.");
+            roleSchema = schemas.GetProperty(name);
+        }
+        Assert.Equal("string", roleSchema.GetProperty("type").GetString());
+        Assert.Contains(roleSchema.GetProperty("enum").EnumerateArray(), value => value.GetString() == "administrator");
         var loginSchema = schemas.GetProperty("LoginRequest");
         Assert.Equal(
             "string",

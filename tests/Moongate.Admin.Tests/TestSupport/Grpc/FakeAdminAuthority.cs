@@ -24,6 +24,7 @@ public sealed class FakeAdminAuthority
     public int CreateCallCount { get; set; }
     public int ListCallCount { get; set; }
     public bool LoseCreateResponse { get; set; }
+    public bool MalformedCreateResponse { get; set; }
     public string InstanceId { get; set; } = "fixture-login";
     public ServerMode Mode { get; set; } = ServerMode.Login;
     public AccountSummary? CreatedAccount { get; set; }

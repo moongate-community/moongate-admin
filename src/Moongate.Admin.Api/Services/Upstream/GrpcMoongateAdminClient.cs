@@ -136,7 +136,14 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
             cancellationToken,
             mutation: true
         );
-        return AdminResponseMapper.ToAccount(response);
+        try
+        {
+            return AdminResponseMapper.ToAccount(response);
+        }
+        catch (UpstreamCallException exception)
+        {
+            throw new UpstreamCallException(exception.StatusCode, mutationOutcomeUnknown: true);
+        }
     }
 
     public async Task RevokeAccountSessionsAsync(uint accountId, string accessToken, CancellationToken cancellationToken)

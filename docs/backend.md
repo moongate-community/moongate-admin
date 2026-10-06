@@ -89,7 +89,7 @@ Malformed JSON, query binding, validation, and CSRF failures return safe 400 res
 
 401 requires sign-in again. A dependency outage returns 503 and preserves the local session so a later request can recover. Logout is the exception: it always clears the local ticket after valid CSRF, even when upstream revocation cannot be confirmed; such an error includes `localSessionCleared: true`.
 
-Account creation has no automatic retry. A response lost after dispatch can follow a committed write; transport failures include `mutationOutcomeUnknown: true`. Use account listing to reconcile the username before deciding to create it again. A duplicate response is 409, not a reason to blindly retry. There is no exactly-once guarantee.
+Account creation has no automatic retry. A response lost after dispatch can follow a committed write; transport failures and malformed successful responses include `mutationOutcomeUnknown: true`. Use account listing to reconcile the username before deciding to create it again. A duplicate response is 409, not a reason to blindly retry. There is no exactly-once guarantee.
 
 ## Deployment and verification
 
