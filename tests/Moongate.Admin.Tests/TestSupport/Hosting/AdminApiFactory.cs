@@ -5,12 +5,24 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Moongate.Admin.Tests.TestSupport.Logging;
 using Serilog.Core;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Moongate.Admin.Tests.TestSupport.Configuration;
 using ApiProgram = Moongate.Admin.Api.Program;
 
 namespace Moongate.Admin.Tests.TestSupport.Hosting;
 
 public class AdminApiFactory : WebApplicationFactory<ApiProgram>
 {
+    public TemporaryConfigurationDirectory ConfigurationDirectory { get; } = new();
+    public TaskCompletionSource? ValidatedRequestEntered { get; set; }
+    public TaskCompletionSource? ValidatedRequestRelease { get; set; }
+    public Func<HttpMessageHandler>? GrpcHandler { get; set; }
+
+    public AdminApiFactory()
+    {
+        Settings["AdminConfiguration:StoragePath"] = ConfigurationDirectory.FilePath;
+    }
+
     public Dictionary<string, string?> Settings { get; } = new()
     {
         ["Moongate:AuthenticationEndpointId"] = "login",
@@ -37,8 +49,39 @@ public class AdminApiFactory : WebApplicationFactory<ApiProgram>
                 services.AddSingleton<ILogEventSink>(Logs);
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton(Clock);
+                if (GrpcHandler is not null)
+                {
+                    services.AddHttpClient("MoongateAdmin").ConfigurePrimaryHttpMessageHandler(GrpcHandler);
+                }
+
+                services.PostConfigure<JwtBearerOptions>(
+                    "Bearer",
+                    options =>
+                    {
+                        var original = options.Events.OnTokenValidated;
+                        options.Events.OnTokenValidated = async context =>
+                        {
+                            await original(context);
+                            if (context.Request.Path == "/api/servers/login" && ValidatedRequestEntered is not null &&
+                                ValidatedRequestRelease is not null)
+                            {
+                                ValidatedRequestEntered.TrySetResult();
+                                await ValidatedRequestRelease.Task.WaitAsync(context.HttpContext.RequestAborted);
+                            }
+                        };
+                    }
+                );
             }
         );
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(Settings));
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(ConfigurationDirectory.Root))
+        {
+            ConfigurationDirectory.Dispose();
+        }
     }
 }

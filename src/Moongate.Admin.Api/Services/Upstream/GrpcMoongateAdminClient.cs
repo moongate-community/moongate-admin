@@ -9,6 +9,7 @@ using Moongate.Admin.Api.Data.Servers;
 using Moongate.Admin.Api.Interfaces.Upstream;
 using Moongate.Admin.Api.Internal;
 using Wire = Moongate.Admin.Contracts.V1;
+using Moongate.Admin.Api.Data.Internal.Configuration;
 
 namespace Moongate.Admin.Api.Services.Upstream;
 
@@ -19,12 +20,14 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
     private readonly Dictionary<string, GrpcChannel> _channels;
     private readonly string _authenticationEndpoint;
     private readonly TimeProvider _clock;
+    private readonly bool _configured;
 
-    public GrpcMoongateAdminClient(IOptions<MoongateOptions> options, IHttpClientFactory clients, TimeProvider clock)
+    public GrpcMoongateAdminClient(ConnectionCatalogSnapshot snapshot, IHttpClientFactory clients, TimeProvider clock)
     {
         _clock = clock;
-        _authenticationEndpoint = options.Value.AuthenticationEndpointId;
-        _channels = options.Value.Endpoints.ToDictionary(
+        _configured = snapshot.Configured;
+        _authenticationEndpoint = snapshot.AuthenticationEndpointId;
+        _channels = snapshot.Endpoints.ToDictionary(
             endpoint => endpoint.Id,
             endpoint => GrpcChannel.ForAddress(
                 endpoint.Address,
@@ -161,6 +164,11 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
 
     private GrpcChannel Channel(string serverId)
     {
+        if (!_configured)
+        {
+            throw new ConfigurationException(StatusCodes.Status503ServiceUnavailable, "configuration_required");
+        }
+
         if (!_channels.TryGetValue(serverId, out var channel))
         {
             throw new BadHttpRequestException("Server not found.", StatusCodes.Status404NotFound);

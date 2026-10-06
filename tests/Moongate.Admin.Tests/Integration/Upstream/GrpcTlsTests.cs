@@ -1,6 +1,6 @@
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Moongate.Admin.Api.Data.Internal.Configuration;
 using Moongate.Admin.Api.Data.Accounts;
 using Moongate.Admin.Api.Data.Config;
 using Moongate.Admin.Api.Internal;
@@ -29,7 +29,8 @@ public class GrpcTlsTests
         await using var provider = services.BuildServiceProvider();
         var uri = new UriBuilder(fixture.Address) { Host = host };
         using var client = new GrpcMoongateAdminClient(
-            Options.Create(
+            new ConnectionCatalogSnapshot(
+                "fixture",
                 new MoongateOptions
                 {
                     AuthenticationEndpointId = "login",

@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Moongate.Admin.Api.Data.Internal.Configuration;
 using Moongate.Admin.Api.Data.Config;
 using Moongate.Admin.Api.Services.Upstream;
 using Moongate.Admin.Tests.TestSupport.Grpc;
@@ -17,7 +17,8 @@ public class GrpcMoongateAdminClientTests
         services.AddHttpClient("MoongateAdmin");
         await using var provider = services.BuildServiceProvider();
         using var client = new GrpcMoongateAdminClient(
-            Options.Create(
+            new ConnectionCatalogSnapshot(
+                "fixture",
                 new MoongateOptions
                 {
                     AuthenticationEndpointId = "login", AllowInsecureLoopback = true,

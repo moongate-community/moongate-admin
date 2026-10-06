@@ -4,9 +4,9 @@
 
 Administration application for [Moongate](https://github.com/moongate-community/moongate).
 
-The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. The REST API uses JWT Bearer authentication. Swagger UI is available at `/swagger` in Development. The frontend remains a later stage.
+The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. It also provides protected initial setup, persistent connection configuration and candidate connection tests. The REST API uses JWT Bearer authentication. Swagger UI is available at `/swagger` in Development. The frontend remains a later stage.
 
-Start the backend with `dotnet run --project src/Moongate.Admin.Api`. See [backend setup and REST operations](docs/backend.md) for HTTPS, endpoint configuration, JWT Bearer flows, and verification.
+Start the backend with `dotnet run --project src/Moongate.Admin.Api`. A fresh process has no connections: supply the temporary setup token from Bitwarden at runtime and configure it through Swagger before login. See [backend setup and REST operations](docs/backend.md) for HTTPS, persistent configuration, JWT Bearer flows, and verification.
 
 ## Connection model
 
@@ -43,7 +43,7 @@ MoongateAdmin.slnx           Backend solution
 
 ## Conventions and branding
 
-`CODE_CONVENTION.md` and `.gitignore` are copied unchanged from Moongate. Follow the applicable coding conventions, using this project's namespaces and solution name. References to upstream services, test scripts, and convention tests describe Moongate; those components and checks do not exist here yet. The shared ReSharper settings also retain an upstream convention-test reference.
+`CODE_CONVENTION.md` is copied unchanged from Moongate; `.gitignore` adds this application's runtime configuration directories to the upstream rules. Follow the applicable coding conventions, using this project's namespaces and solution name. References to upstream services, test scripts, and convention tests describe Moongate; those components and checks do not exist here yet. The shared ReSharper settings also retain an upstream convention-test reference.
 
 The original logo and mark are in `images/`. The favicon and Apple touch icon from Moongate's documentation website are in `frontend/public/`, ready for the frontend. The images are copied unchanged.
 

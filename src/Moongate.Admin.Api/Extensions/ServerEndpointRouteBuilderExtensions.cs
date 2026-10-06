@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Options;
+using Moongate.Admin.Api.Data.Internal.Configuration;
 using Moongate.Admin.Api.Data.Config;
 using Moongate.Admin.Api.Data.Servers;
 using Moongate.Admin.Api.Data.Sessions;
@@ -15,7 +15,7 @@ public static class ServerEndpointRouteBuilderExtensions
                 "/api/auth/session",
                 async (
                     HttpContext context, AdminSessionAccessor sessions,
-                    IMoongateAdminClient client, IOptions<MoongateOptions> options, CancellationToken cancellationToken
+                    IMoongateAdminClient client, ConnectionCatalogSnapshot snapshot, CancellationToken cancellationToken
                 ) =>
                 {
                     var session = await sessions.GetAsync(context, cancellationToken)
@@ -24,7 +24,7 @@ public static class ServerEndpointRouteBuilderExtensions
                                       StatusCodes.Status401Unauthorized
                                   );
                     await client.GetServerInfoAsync(
-                        options.Value.AuthenticationEndpointId,
+                        snapshot.AuthenticationEndpointId,
                         session.AccessToken,
                         cancellationToken
                     );
@@ -36,7 +36,7 @@ public static class ServerEndpointRouteBuilderExtensions
                 "/api/servers",
                 async (
                     HttpContext context, AdminSessionAccessor sessions,
-                    IMoongateAdminClient client, IOptions<MoongateOptions> options, CancellationToken cancellationToken
+                    IMoongateAdminClient client, ConnectionCatalogSnapshot snapshot, CancellationToken cancellationToken
                 ) =>
                 {
                     var session = await sessions.GetAsync(context, cancellationToken)
@@ -45,12 +45,12 @@ public static class ServerEndpointRouteBuilderExtensions
                                       StatusCodes.Status401Unauthorized
                                   );
                     await client.GetServerInfoAsync(
-                        options.Value.AuthenticationEndpointId,
+                        snapshot.AuthenticationEndpointId,
                         session.AccessToken,
                         cancellationToken
                     );
                     return TypedResults.Ok(
-                        options.Value.Endpoints.Select(endpoint => new ServerSummaryResponse
+                        snapshot.Endpoints.Select(endpoint => new ServerSummaryResponse
                         {
                             Id = endpoint.Id, Label = endpoint.Label
                         }

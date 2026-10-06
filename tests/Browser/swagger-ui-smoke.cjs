@@ -28,10 +28,19 @@ const sandbox = {
   assert.equal(document.components.securitySchemes.AdminBearer.scheme, 'bearer');
   assert.equal(document.components.securitySchemes.AdminBearer.bearerFormat, 'JWT');
   assert.equal(document.paths['/api/auth/csrf'], undefined);
+  assert.equal(document.components.securitySchemes.SetupToken.type, 'apiKey');
+  assert.equal(document.components.securitySchemes.SetupToken.name, 'X-Moongate-Setup-Token');
+  assert.equal(document.components.securitySchemes.SetupToken.in, 'header');
+  assert.deepEqual(document.paths['/api/configuration/setup'].post.security, [{ SetupToken: [] }]);
+  assert.deepEqual(document.paths['/api/configuration/status'].get.security || [], []);
+  const probeRequirements = document.paths['/api/configuration/test-connection'].post.security;
+  assert.ok(probeRequirements.some(requirement => Object.hasOwn(requirement, 'AdminBearer')));
+  assert.ok(probeRequirements.some(requirement => Object.hasOwn(requirement, 'SetupToken')));
+  assert.ok(probeRequirements.every(requirement => Object.keys(requirement).length === 1));
   for (const path of ['/api/auth/login', '/api/auth/logout']) {
     const requirements = document.paths[path].post.security;
     assert.ok(requirements.some(requirement => Object.hasOwn(requirement, 'AdminBearer')));
     assert.ok(requirements.some(requirement => Object.keys(requirement).length === 0));
   }
-  console.log('Swagger bootstrap, OpenAPI binding, and JWT Bearer configuration verified.');
+  console.log('Swagger bootstrap, OpenAPI binding, JWT Bearer, and configuration setup authorization verified.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

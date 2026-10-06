@@ -25,7 +25,7 @@ public sealed class AdminGrpcFixture : IAsyncDisposable
 
     public static async Task<AdminGrpcFixture> StartAsync(
         FakeAdminAuthority? authority = null, X509Certificate2? certificate = null,
-        ServerMode? mode = null, string? instanceId = null
+        ServerMode? mode = null, string? instanceId = null, ServerMode? reportedMode = null
     )
     {
         authority ??= new FakeAdminAuthority();
@@ -47,7 +47,7 @@ public sealed class AdminGrpcFixture : IAsyncDisposable
         builder.Services.AddGrpc();
         builder.Services.AddSingleton(authority);
         var state = new FakeAdminHostState
-        { Mode = mode ?? authority.Mode, InstanceId = instanceId ?? authority.InstanceId };
+        { Mode = mode ?? authority.Mode, InstanceId = instanceId ?? authority.InstanceId, ReportedMode = reportedMode };
         builder.Services.AddSingleton(state);
         var app = builder.Build();
         if (state.Mode is ServerMode.Login or ServerMode.Standalone)

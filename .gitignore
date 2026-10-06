@@ -593,6 +593,8 @@ src/**/Generated/
 
 definitions.lua
 .worktrees/
+/data/
+/src/Moongate.Admin.Api/data/
 .worktrees
 
 dist/

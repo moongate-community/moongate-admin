@@ -15,7 +15,7 @@ public sealed class FakeAdminSessionService : AdminSession.AdminSessionBase
 
     public override Task<Empty> Logout(Empty request, ServerCallContext context)
     {
-        if (_authority.Failure is { } failure)
+        if ((_authority.LogoutFailure ?? _authority.Failure) is { } failure)
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
         }

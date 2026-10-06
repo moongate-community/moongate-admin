@@ -13,23 +13,35 @@ public sealed class FakeAdminLoginService : AdminLogin.AdminLoginBase
         _authority = authority;
     }
 
-    public override Task<LoginResponse> Login(LoginRequest request, ServerCallContext context)
+    public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context)
     {
         _authority.LoginCallCount++;
         _authority.LastLogin = request;
         _authority.LastDeadline = context.Deadline;
+        if (_authority.LoginEntered is not null && _authority.LoginRelease is not null)
+        {
+            _authority.LoginEntered.TrySetResult();
+            try
+            {
+                await _authority.LoginRelease.Task.WaitAsync(context.CancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _authority.LoginCancelled?.TrySetResult();
+                throw;
+            }
+        }
+
         if (_authority.Failure is { } failure)
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
         }
 
         _authority.Revoked = false;
-        return Task.FromResult(
-            new LoginResponse
-            {
-                Account = _authority.Summary(request.Username), AccessToken = _authority.IssueToken(),
-                ExpiresAt = Timestamp.FromDateTimeOffset(_authority.ExpiresAt)
-            }
-        );
+        return new LoginResponse
+        {
+            Account = _authority.Summary(request.Username), AccessToken = _authority.IssueToken(),
+            ExpiresAt = Timestamp.FromDateTimeOffset(_authority.ExpiresAt)
+        };
     }
 }
