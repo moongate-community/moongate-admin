@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -25,21 +26,26 @@ public static class AdminServiceCollectionExtensions
         services.AddSingleton<MemoryTicketStore>();
         services.AddScoped<AdminSessionAccessor>();
         services.AddScoped<AdminCookieEvents>();
-        services.AddAuthentication(AdminAuthentication.Scheme).AddCookie(AdminAuthentication.Scheme, options =>
+        var authentication = services.AddAuthentication(AdminAuthentication.Scheme);
+        foreach (var scheme in new[] { AdminAuthentication.Scheme, AdminAuthentication.SignInScheme })
         {
-            options.Cookie.Name = AdminAuthentication.Cookie;
-            options.Cookie.Path = "/";
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-            options.Cookie.HttpOnly = true;
-            options.Cookie.SameSite = SameSiteMode.Strict;
-            options.SlidingExpiration = false;
-            options.EventsType = typeof(AdminCookieEvents);
-        });
-        services.AddOptions<CookieAuthenticationOptions>(AdminAuthentication.Scheme).Configure<MemoryTicketStore, TimeProvider>((options, store, clock) =>
-        {
-            options.SessionStore = store;
-            options.TimeProvider = clock;
-        });
+            authentication.AddCookie(scheme, options =>
+            {
+                options.Cookie.Name = AdminAuthentication.Cookie;
+                options.Cookie.Path = "/";
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.SlidingExpiration = false;
+                options.EventsType = typeof(AdminCookieEvents);
+            });
+            services.AddOptions<CookieAuthenticationOptions>(scheme).Configure<MemoryTicketStore, TimeProvider, IDataProtectionProvider>((options, store, clock, protection) =>
+            {
+                options.SessionStore = store;
+                options.TimeProvider = clock;
+                options.TicketDataFormat = new TicketDataFormat(protection.CreateProtector("MoongateAdmin.SessionCookie", "v1"));
+            });
+        }
         services.AddAuthorization(options =>
         {
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();

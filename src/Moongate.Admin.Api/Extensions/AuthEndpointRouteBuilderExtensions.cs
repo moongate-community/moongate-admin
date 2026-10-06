@@ -54,7 +54,7 @@ public static class AuthEndpointRouteBuilderExtensions
         };
         properties.StoreTokens([new AuthenticationToken { Name = AdminAuthentication.TokenName, Value = login.AccessToken }]);
         properties.Items[AdminAuthentication.AccountProperty] = JsonSerializer.Serialize(login.Account);
-        await context.SignInAsync(AdminAuthentication.Scheme, new ClaimsPrincipal(identity), properties);
+        await context.SignInAsync(AdminAuthentication.SignInScheme, new ClaimsPrincipal(identity), properties);
         context.Response.Headers.CacheControl = "no-store";
         return TypedResults.Ok(new SessionResponse { Account = login.Account, ExpiresAt = login.ExpiresAt });
     }
