@@ -17,10 +17,14 @@ public sealed class ConnectionProbeService
     private readonly IHttpClientFactory _clients;
     private readonly TimeProvider _clock;
     private readonly Serilog.ILogger _logger = Log.ForContext<ConnectionProbeService>();
+
     public ConnectionProbeService(MoongateOptionsValidator validator, IHttpClientFactory clients, TimeProvider clock)
     {
-        _validator = validator; _clients = clients; _clock = clock;
+        _validator = validator;
+        _clients = clients;
+        _clock = clock;
     }
+
     public async Task<ConnectionProbeResponse> TestAsync(ConnectionProbeRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -28,40 +32,64 @@ public sealed class ConnectionProbeService
         {
             throw new ConfigurationException(StatusCodes.Status400BadRequest, "configuration_invalid");
         }
+
         AdminRequestValidator.ValidateCredentials(request.Username, request.Password);
         var selected = request.EndpointId ?? request.Configuration.AuthenticationEndpointId;
         if (!request.Configuration.Endpoints.Any(endpoint => endpoint.Id == selected))
         {
             throw new ConfigurationException(StatusCodes.Status400BadRequest, "configuration_invalid");
         }
-        using var candidate = new GrpcMoongateAdminClient(new ConnectionCatalogSnapshot(Guid.NewGuid().ToString("N"), request.Configuration), _clients, _clock);
+
+        using var candidate = new GrpcMoongateAdminClient(
+            new ConnectionCatalogSnapshot(Guid.NewGuid().ToString("N"), request.Configuration),
+            _clients,
+            _clock
+        );
         UpstreamLoginResult? login = null;
         try
         {
-            login = await candidate.LoginAsync(new LoginRequest { Username = request.Username, Password = request.Password }, cancellationToken);
-            if (login.Account.AccountType != AdminAccountType.Administrator || !login.Account.CanAccessApi || login.Account.IsLocked)
+            login = await candidate.LoginAsync(
+                new LoginRequest { Username = request.Username, Password = request.Password },
+                cancellationToken
+            );
+            if (login.Account.AccountType != AdminAccountType.Administrator || !login.Account.CanAccessApi ||
+                login.Account.IsLocked)
             {
                 throw new ConfigurationException(StatusCodes.Status403Forbidden, "permission_denied");
             }
-            var authentication = await candidate.GetServerInfoAsync(request.Configuration.AuthenticationEndpointId, login.AccessToken, cancellationToken);
+
+            var authentication = await candidate.GetServerInfoAsync(
+                request.Configuration.AuthenticationEndpointId,
+                login.AccessToken,
+                cancellationToken
+            );
             if (authentication.Mode is not AdminServerMode.Login and not AdminServerMode.Standalone)
             {
                 throw new ConfigurationException(StatusCodes.Status400BadRequest, "configuration_invalid");
             }
-            var server = selected == request.Configuration.AuthenticationEndpointId ? authentication
+
+            var server = selected == request.Configuration.AuthenticationEndpointId
+                ? authentication
                 : await candidate.GetServerInfoAsync(selected, login.AccessToken, cancellationToken);
             return new ConnectionProbeResponse { EndpointId = selected, Server = server };
         }
         catch (UpstreamCallException exception)
         {
-            throw new UpstreamCallException(exception.StatusCode, exception.MutationOutcomeUnknown, invalidatesLocalSession: false);
+            throw new UpstreamCallException(
+                exception.StatusCode,
+                exception.MutationOutcomeUnknown,
+                invalidatesLocalSession: false
+            );
         }
         finally
         {
             if (login is not null)
             {
                 using var cleanup = new CancellationTokenSource(LogoutTimeout);
-                try { await candidate.LogoutAsync(login.AccessToken, cleanup.Token); }
+                try
+                {
+                    await candidate.LogoutAsync(login.AccessToken, cleanup.Token);
+                }
                 catch (Exception exception) when (exception is UpstreamCallException or OperationCanceledException)
                 {
                     _logger.Warning("Candidate connection session logout was not confirmed");

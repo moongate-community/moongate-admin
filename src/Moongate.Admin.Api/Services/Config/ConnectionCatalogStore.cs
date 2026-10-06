@@ -14,17 +14,31 @@ public sealed class ConnectionCatalogStore : IConnectionCatalogStore, IHostedSer
     private readonly MoongateOptionsValidator _validator;
     private readonly SemaphoreSlim _writes = new(1, 1);
     private ConnectionCatalogSnapshot? _current;
+
     public ConnectionCatalogSnapshot Current
     {
-        get { return Volatile.Read(ref _current) ?? throw new InvalidOperationException("Configuration is not initialized."); }
+        get
+        {
+            return Volatile.Read(ref _current) ?? throw new InvalidOperationException("Configuration is not initialized.");
+        }
     }
-    public ConnectionCatalogStore(IConfiguration configuration, IConnectionCatalogPersistence persistence, MoongateOptionsValidator validator)
+
+    public ConnectionCatalogStore(
+        IConfiguration configuration, IConnectionCatalogPersistence persistence, MoongateOptionsValidator validator
+    )
     {
-        _configuration = configuration; _persistence = persistence; _validator = validator;
+        _configuration = configuration;
+        _persistence = persistence;
+        _validator = validator;
     }
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (_current is not null) { return; }
+        if (_current is not null)
+        {
+            return;
+        }
+
         try
         {
             var saved = await _persistence.ReadAsync(cancellationToken);
@@ -35,9 +49,11 @@ public sealed class ConnectionCatalogStore : IConnectionCatalogStore, IHostedSer
                 {
                     throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_load_failed");
                 }
+
                 Volatile.Write(ref _current, new ConnectionCatalogSnapshot(saved.Revision, saved.Configuration));
                 return;
             }
+
             var options = new MoongateOptions();
             _configuration.GetSection("Moongate").Bind(options);
             var empty = options.Endpoints is { Count: 0 } && options.AuthenticationEndpointId == "";
@@ -45,33 +61,44 @@ public sealed class ConnectionCatalogStore : IConnectionCatalogStore, IHostedSer
             {
                 throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_load_failed");
             }
+
             Volatile.Write(ref _current, new ConnectionCatalogSnapshot(Guid.NewGuid().ToString("N"), options));
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException
+                                              or InvalidOperationException or ArgumentException)
         {
             throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_load_failed");
         }
     }
+
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
+
     public Task<ConnectionCatalogSnapshot> SetupAsync(MoongateOptions configuration, CancellationToken cancellationToken)
     {
         return SaveAsync(configuration, null, cancellationToken);
     }
-    public Task<ConnectionCatalogSnapshot> ReplaceAsync(MoongateOptions configuration, string expectedRevision, CancellationToken cancellationToken)
+
+    public Task<ConnectionCatalogSnapshot> ReplaceAsync(
+        MoongateOptions configuration, string expectedRevision, CancellationToken cancellationToken
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(expectedRevision);
         return SaveAsync(configuration, expectedRevision, cancellationToken);
     }
-    private async Task<ConnectionCatalogSnapshot> SaveAsync(MoongateOptions configuration, string? expectedRevision, CancellationToken cancellationToken)
+
+    private async Task<ConnectionCatalogSnapshot> SaveAsync(
+        MoongateOptions configuration, string? expectedRevision, CancellationToken cancellationToken
+    )
     {
         ArgumentNullException.ThrowIfNull(configuration);
         if (!_validator.Validate(null, configuration).Succeeded)
         {
             throw new ConfigurationException(StatusCodes.Status400BadRequest, "configuration_invalid");
         }
+
         var candidate = new ConnectionCatalogSnapshot(Guid.NewGuid().ToString("N"), configuration);
         await _writes.WaitAsync(cancellationToken);
         try
@@ -80,24 +107,36 @@ public sealed class ConnectionCatalogStore : IConnectionCatalogStore, IHostedSer
             {
                 throw new ConfigurationException(StatusCodes.Status409Conflict, "configuration_already_configured");
             }
+
             if (expectedRevision is not null && !string.Equals(expectedRevision, Current.Revision, StringComparison.Ordinal))
             {
                 throw new ConfigurationException(StatusCodes.Status412PreconditionFailed, "configuration_changed");
             }
+
             try
             {
-                await _persistence.WriteAsync(new PersistedConnectionCatalog
-                { SchemaVersion = SchemaVersion, Revision = candidate.Revision, Configuration = candidate.ToOptions() }, cancellationToken);
+                await _persistence.WriteAsync(
+                    new PersistedConnectionCatalog
+                    {
+                        SchemaVersion = SchemaVersion, Revision = candidate.Revision, Configuration = candidate.ToOptions()
+                    },
+                    cancellationToken
+                );
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
             {
                 throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_save_failed");
             }
+
             Volatile.Write(ref _current, candidate);
             return candidate;
         }
-        finally { _writes.Release(); }
+        finally
+        {
+            _writes.Release();
+        }
     }
+
     public void Dispose()
     {
         _writes.Dispose();

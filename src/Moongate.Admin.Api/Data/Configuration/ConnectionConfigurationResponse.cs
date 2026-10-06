@@ -10,10 +10,16 @@ public sealed class ConnectionConfigurationResponse
     public IReadOnlyList<MoongateEndpointOptions> Endpoints { get; init; } = [];
     public string Revision { get; init; } = "";
     public bool ReauthenticationRequired { get; init; }
-    public static ConnectionConfigurationResponse FromSnapshot(ConnectionCatalogSnapshot snapshot, bool reauthenticationRequired = false)
+
+    public static ConnectionConfigurationResponse FromSnapshot(
+        ConnectionCatalogSnapshot snapshot, bool reauthenticationRequired = false
+    )
     {
-        return new ConnectionConfigurationResponse { AuthenticationEndpointId = snapshot.AuthenticationEndpointId,
+        return new ConnectionConfigurationResponse
+        {
+            AuthenticationEndpointId = snapshot.AuthenticationEndpointId,
             AllowInsecureLoopback = snapshot.AllowInsecureLoopback, Endpoints = snapshot.ToOptions().Endpoints,
-            Revision = snapshot.Revision, ReauthenticationRequired = reauthenticationRequired };
+            Revision = snapshot.Revision, ReauthenticationRequired = reauthenticationRequired
+        };
     }
 }

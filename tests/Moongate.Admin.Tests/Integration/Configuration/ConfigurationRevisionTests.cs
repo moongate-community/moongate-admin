@@ -24,7 +24,10 @@ public class ConfigurationRevisionTests
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/swagger/index.html")).StatusCode);
         var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
         Assert.Equal(HttpStatusCode.ServiceUnavailable, login.StatusCode);
-        Assert.Equal("configuration_required", (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+        Assert.Equal(
+            "configuration_required",
+            (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -53,7 +56,8 @@ public class ConfigurationRevisionTests
         await using var second = await AdminGrpcFixture.StartAsync(instanceId: "second");
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await using var factory = new AdminApiFactory { ValidatedRequestEntered = entered, ValidatedRequestRelease = release };
+        await using var factory = new AdminApiFactory
+        { ValidatedRequestEntered = entered, ValidatedRequestRelease = release };
         factory.UseGrpc(first);
         using var client = await AuthenticatedApiClient.CreateAsync(factory);
         var pending = client.GetAsync("/api/servers/login");
@@ -63,10 +67,17 @@ public class ConfigurationRevisionTests
             var store = factory.Services.GetRequiredService<IConnectionCatalogStore>();
             await store.ReplaceAsync(Candidate(second), store.Current.Revision, CancellationToken.None);
         }
-        finally { release.TrySetResult(); }
+        finally
+        {
+            release.TrySetResult();
+        }
+
         var response = await pending;
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("first", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("instanceId").GetString());
+        Assert.Equal(
+            "first",
+            (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("instanceId").GetString()
+        );
         Assert.Null(second.Authority.LastAuthorization);
     }
 
@@ -90,12 +101,20 @@ public class ConfigurationRevisionTests
             var store = factory.Services.GetRequiredService<IConnectionCatalogStore>();
             await store.ReplaceAsync(Candidate(second), store.Current.Revision, CancellationToken.None);
         }
-        finally { authority.LoginRelease.TrySetResult(); }
+        finally
+        {
+            authority.LoginRelease.TrySetResult();
+        }
+
         var login = await (await loginTask).Content.ReadFromJsonAsync<JsonElement>();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.GetProperty("accessToken").GetString());
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            login.GetProperty("accessToken").GetString()
+        );
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/session")).StatusCode);
         Assert.Null(second.Authority.LastAuthorization);
     }
+
     [Fact]
     public async Task Login_SavedCatalogWithInvalidStaticSettings_UsesPersistedAuthority()
     {
@@ -110,7 +129,10 @@ public class ConfigurationRevisionTests
         restarted.Settings["AdminConfiguration:StoragePath"] = firstFactory.ConfigurationDirectory.FilePath;
         restarted.Settings["Moongate:AuthenticationEndpointId"] = "invalid-static";
         using var client = await AuthenticatedApiClient.CreateAsync(restarted);
-        Assert.Equal("persisted", (await client.GetFromJsonAsync<JsonElement>("/api/servers/login")).GetProperty("instanceId").GetString());
+        Assert.Equal(
+            "persisted",
+            (await client.GetFromJsonAsync<JsonElement>("/api/servers/login")).GetProperty("instanceId").GetString()
+        );
     }
 
     [Fact]
@@ -133,14 +155,24 @@ public class ConfigurationRevisionTests
             var store = factory.Services.GetRequiredService<IConnectionCatalogStore>();
             await store.ReplaceAsync(Candidate(second), store.Current.Revision, CancellationToken.None);
         }
-        finally { authority.InformationRelease.TrySetResult(); }
-        Assert.Equal("first", (await (await pending).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("instanceId").GetString());
+        finally
+        {
+            authority.InformationRelease.TrySetResult();
+        }
+
+        Assert.Equal(
+            "first",
+            (await (await pending).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("instanceId").GetString()
+        );
         Assert.Null(second.Authority.LastAuthorization);
     }
 
     private static MoongateOptions Candidate(AdminGrpcFixture fixture)
     {
-        return new MoongateOptions { AuthenticationEndpointId = "login", AllowInsecureLoopback = true,
-            Endpoints = [new MoongateEndpointOptions { Id = "login", Label = "Login", Address = fixture.Address }] };
+        return new MoongateOptions
+        {
+            AuthenticationEndpointId = "login", AllowInsecureLoopback = true,
+            Endpoints = [new MoongateEndpointOptions { Id = "login", Label = "Login", Address = fixture.Address }]
+        };
     }
 }

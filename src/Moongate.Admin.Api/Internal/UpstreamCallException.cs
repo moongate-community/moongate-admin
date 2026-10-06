@@ -8,7 +8,9 @@ public sealed class UpstreamCallException : Exception
     public bool MutationOutcomeUnknown { get; }
     public bool InvalidatesLocalSession { get; }
 
-    public UpstreamCallException(StatusCode statusCode, bool mutationOutcomeUnknown = false, bool invalidatesLocalSession = true)
+    public UpstreamCallException(
+        StatusCode statusCode, bool mutationOutcomeUnknown = false, bool invalidatesLocalSession = true
+    )
         : base("Moongate administration call failed.")
     {
         StatusCode = statusCode;

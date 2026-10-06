@@ -21,9 +21,17 @@ public sealed class FakeAdminLoginService : AdminLogin.AdminLoginBase
         if (_authority.LoginEntered is not null && _authority.LoginRelease is not null)
         {
             _authority.LoginEntered.TrySetResult();
-            try { await _authority.LoginRelease.Task.WaitAsync(context.CancellationToken); }
-            catch (OperationCanceledException) { _authority.LoginCancelled?.TrySetResult(); throw; }
+            try
+            {
+                await _authority.LoginRelease.Task.WaitAsync(context.CancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _authority.LoginCancelled?.TrySetResult();
+                throw;
+            }
         }
+
         if (_authority.Failure is { } failure)
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
@@ -31,9 +39,9 @@ public sealed class FakeAdminLoginService : AdminLogin.AdminLoginBase
 
         _authority.Revoked = false;
         return new LoginResponse
-            {
-                Account = _authority.Summary(request.Username), AccessToken = _authority.IssueToken(),
-                ExpiresAt = Timestamp.FromDateTimeOffset(_authority.ExpiresAt)
-            };
+        {
+            Account = _authority.Summary(request.Username), AccessToken = _authority.IssueToken(),
+            ExpiresAt = Timestamp.FromDateTimeOffset(_authority.ExpiresAt)
+        };
     }
 }

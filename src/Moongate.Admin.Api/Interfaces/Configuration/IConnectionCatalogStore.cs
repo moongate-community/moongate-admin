@@ -12,12 +12,16 @@ public interface IConnectionCatalogStore
     ///     Gets the last successfully committed snapshot.
     /// </summary>
     ConnectionCatalogSnapshot Current { get; }
+
     /// <summary>
     ///     Saves the first configuration only when no catalog is configured.
     /// </summary>
     Task<ConnectionCatalogSnapshot> SetupAsync(MoongateOptions configuration, CancellationToken cancellationToken);
+
     /// <summary>
     ///     Replaces the catalog only when the supplied revision still matches.
     /// </summary>
-    Task<ConnectionCatalogSnapshot> ReplaceAsync(MoongateOptions configuration, string expectedRevision, CancellationToken cancellationToken);
+    Task<ConnectionCatalogSnapshot> ReplaceAsync(
+        MoongateOptions configuration, string expectedRevision, CancellationToken cancellationToken
+    );
 }

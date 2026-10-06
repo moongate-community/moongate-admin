@@ -17,7 +17,8 @@ public class GrpcMoongateAdminClientTests
         services.AddHttpClient("MoongateAdmin");
         await using var provider = services.BuildServiceProvider();
         using var client = new GrpcMoongateAdminClient(
-            new ConnectionCatalogSnapshot("fixture",
+            new ConnectionCatalogSnapshot(
+                "fixture",
                 new MoongateOptions
                 {
                     AuthenticationEndpointId = "login", AllowInsecureLoopback = true,

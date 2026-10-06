@@ -23,10 +23,11 @@ public sealed class FakeAdminServerService : AdminServer.AdminServerBase
             _authority.InformationEntered.TrySetResult();
             await _authority.InformationRelease.Task.WaitAsync(context.CancellationToken);
         }
+
         return new GetServerInfoResponse
-            {
-                Version = "0.14.0", Codename = "fixture", InstanceId = _state.InstanceId,
-                RealmId = "realm-1", Mode = _state.ReportedMode ?? _state.Mode, UptimeSeconds = ulong.MaxValue
-            };
+        {
+            Version = "0.14.0", Codename = "fixture", InstanceId = _state.InstanceId,
+            RealmId = "realm-1", Mode = _state.ReportedMode ?? _state.Mode, UptimeSeconds = ulong.MaxValue
+        };
     }
 }

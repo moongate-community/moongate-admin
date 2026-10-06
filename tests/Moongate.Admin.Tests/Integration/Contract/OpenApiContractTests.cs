@@ -9,6 +9,79 @@ namespace Moongate.Admin.Tests.Integration.Contract;
 public class OpenApiContractTests
 {
     [Fact]
+    public async Task OpenApi_Configuration_DescribesSetupAndUpdateAuthorization()
+    {
+        await using var factory = new AdminApiFactory();
+        var document = await AuthenticatedApiClient.Create(factory).GetFromJsonAsync<JsonElement>("/openapi/v1.json");
+        var paths = document.GetProperty("paths");
+        var schemes = document.GetProperty("components").GetProperty("securitySchemes");
+        var setup = schemes.GetProperty("SetupToken");
+        Assert.Equal("apiKey", setup.GetProperty("type").GetString());
+        Assert.Equal("header", setup.GetProperty("in").GetString());
+        Assert.Equal("X-Moongate-Setup-Token", setup.GetProperty("name").GetString());
+        var setupSecurity = paths.GetProperty("/api/configuration/setup").GetProperty("post").GetProperty("security");
+        Assert.Single(setupSecurity.EnumerateArray());
+        Assert.True(setupSecurity[0].TryGetProperty("SetupToken", out _));
+        Assert.False(setupSecurity[0].TryGetProperty("AdminBearer", out _));
+        var status = paths.GetProperty("/api/configuration/status").GetProperty("get");
+        if (status.TryGetProperty("security", out var statusSecurity))
+        {
+            Assert.Empty(statusSecurity.EnumerateArray());
+        }
+
+        var probeSecurity = paths.GetProperty("/api/configuration/test-connection")
+            .GetProperty("post")
+            .GetProperty("security");
+        Assert.Equal(2, probeSecurity.GetArrayLength());
+        Assert.Contains(probeSecurity.EnumerateArray(), value => value.TryGetProperty("AdminBearer", out _));
+        Assert.Contains(probeSecurity.EnumerateArray(), value => value.TryGetProperty("SetupToken", out _));
+        Assert.All(probeSecurity.EnumerateArray(), value => Assert.Single(value.EnumerateObject()));
+        var update = paths.GetProperty("/api/configuration").GetProperty("put");
+        Assert.True(update.GetProperty("security")[0].TryGetProperty("AdminBearer", out _));
+        Assert.Contains(
+            update.GetProperty("parameters").EnumerateArray(),
+            parameter =>
+                parameter.GetProperty("name").GetString() == "If-Match" && parameter.GetProperty("required").GetBoolean()
+        );
+        Assert.True(update.GetProperty("responses").TryGetProperty("412", out _));
+        Assert.True(update.GetProperty("responses").TryGetProperty("428", out _));
+        Assert.True(update.GetProperty("responses").GetProperty("200").GetProperty("headers").TryGetProperty("ETag", out _));
+        Assert.True(
+            paths.GetProperty("/api/configuration")
+                .GetProperty("get")
+                .GetProperty("responses")
+                .GetProperty("200")
+                .GetProperty("headers")
+                .TryGetProperty("ETag", out _)
+        );
+    }
+
+    [Fact]
+    public async Task OpenApi_ProbeAndCatalogSchemas_DescribeLimitsWithoutSecrets()
+    {
+        await using var factory = new AdminApiFactory();
+        var document = await AuthenticatedApiClient.Create(factory).GetFromJsonAsync<JsonElement>("/openapi/v1.json");
+        var schemas = document.GetProperty("components").GetProperty("schemas");
+        var probe = schemas.GetProperty("ConnectionProbeRequest");
+        foreach (var credential in new[] { "username", "password" })
+        {
+            Assert.True(probe.GetProperty("properties").GetProperty(credential).GetProperty("writeOnly").GetBoolean());
+            Assert.Contains(probe.GetProperty("required").EnumerateArray(), item => item.GetString() == credential);
+        }
+
+        var endpoints = schemas.GetProperty("MoongateOptions").GetProperty("properties").GetProperty("endpoints");
+        Assert.Equal(1, endpoints.GetProperty("minItems").GetInt32());
+        Assert.Equal(16, endpoints.GetProperty("maxItems").GetInt32());
+        var properties = schemas.GetProperty("MoongateEndpointOptions").GetProperty("properties");
+        Assert.Equal(64, properties.GetProperty("id").GetProperty("maxLength").GetInt32());
+        Assert.Equal(100, properties.GetProperty("label").GetProperty("maxLength").GetInt32());
+        Assert.Equal(2048, properties.GetProperty("address").GetProperty("maxLength").GetInt32());
+        Assert.DoesNotContain("PersistedConnectionCatalog", document.ToString());
+        Assert.DoesNotContain("ConnectionCatalogSnapshot", document.ToString());
+        Assert.DoesNotContain(TestSupport.Configuration.ConfigurationHttpFixtures.SetupToken, document.ToString());
+    }
+
+    [Fact]
     public async Task OpenApi_Development_DescribesPublicRestContract()
     {
         await using var factory = new AdminApiFactory();
@@ -54,9 +127,11 @@ public class OpenApiContractTests
         var roleSchema = schemas.GetProperty("AccountSummaryResponse").GetProperty("properties").GetProperty("accountType");
         if (roleSchema.TryGetProperty("$ref", out var roleReference))
         {
-            var name = roleReference.GetString()?.Split('/').Last() ?? throw new InvalidOperationException("Missing role schema reference.");
+            var name = roleReference.GetString()?.Split('/').Last() ??
+                       throw new InvalidOperationException("Missing role schema reference.");
             roleSchema = schemas.GetProperty(name);
         }
+
         Assert.Equal("string", roleSchema.GetProperty("type").GetString());
         Assert.Contains(roleSchema.GetProperty("enum").EnumerateArray(), value => value.GetString() == "administrator");
         var loginSchema = schemas.GetProperty("LoginRequest");

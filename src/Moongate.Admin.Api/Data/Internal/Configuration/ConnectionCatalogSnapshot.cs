@@ -8,17 +8,32 @@ public sealed class ConnectionCatalogSnapshot
     public string AuthenticationEndpointId { get; }
     public bool AllowInsecureLoopback { get; }
     public IReadOnlyList<ConnectionEndpoint> Endpoints { get; }
-    public bool Configured { get { return Endpoints.Count > 0; } }
+
+    public bool Configured
+    {
+        get { return Endpoints.Count > 0; }
+    }
+
     public ConnectionCatalogSnapshot(string revision, MoongateOptions configuration)
     {
         Revision = revision;
         AuthenticationEndpointId = configuration.AuthenticationEndpointId;
         AllowInsecureLoopback = configuration.AllowInsecureLoopback;
-        Endpoints = Array.AsReadOnly(configuration.Endpoints.Select(endpoint => new ConnectionEndpoint(endpoint.Id, endpoint.Label, endpoint.Address)).ToArray());
+        Endpoints = Array.AsReadOnly(
+            configuration.Endpoints.Select(endpoint => new ConnectionEndpoint(endpoint.Id, endpoint.Label, endpoint.Address))
+                .ToArray()
+        );
     }
+
     public MoongateOptions ToOptions()
     {
-        return new MoongateOptions { AuthenticationEndpointId = AuthenticationEndpointId, AllowInsecureLoopback = AllowInsecureLoopback,
-            Endpoints = Endpoints.Select(endpoint => new MoongateEndpointOptions { Id = endpoint.Id, Label = endpoint.Label, Address = endpoint.Address }).ToArray() };
+        return new MoongateOptions
+        {
+            AuthenticationEndpointId = AuthenticationEndpointId, AllowInsecureLoopback = AllowInsecureLoopback,
+            Endpoints = Endpoints.Select(endpoint => new MoongateEndpointOptions
+            { Id = endpoint.Id, Label = endpoint.Label, Address = endpoint.Address }
+                )
+                .ToArray()
+        };
     }
 }

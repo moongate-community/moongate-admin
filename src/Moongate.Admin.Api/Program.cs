@@ -10,6 +10,7 @@ namespace Moongate.Admin.Api;
 public class Program
 {
     private const long MaximumConfigurationBodyBytes = 65536;
+
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -32,15 +33,24 @@ public class Program
                         await ProblemResponses.WriteAsync(context, StatusCodes.Status400BadRequest, "https_required");
                         return;
                     }
+
                     if (context.Request.Path.StartsWithSegments("/api/configuration"))
                     {
                         if (context.Request.ContentLength > MaximumConfigurationBodyBytes)
                         {
-                            await ProblemResponses.WriteAsync(context, StatusCodes.Status413PayloadTooLarge, "request_body_too_large");
+                            await ProblemResponses.WriteAsync(
+                                context,
+                                StatusCodes.Status413PayloadTooLarge,
+                                "request_body_too_large"
+                            );
                             return;
                         }
+
                         var limit = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-                        if (limit is { IsReadOnly: false }) { limit.MaxRequestBodySize = MaximumConfigurationBodyBytes; }
+                        if (limit is { IsReadOnly: false })
+                        {
+                            limit.MaxRequestBodySize = MaximumConfigurationBodyBytes;
+                        }
                     }
                 }
 

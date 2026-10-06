@@ -17,10 +17,12 @@ public class AdminApiFactory : WebApplicationFactory<ApiProgram>
     public TaskCompletionSource? ValidatedRequestEntered { get; set; }
     public TaskCompletionSource? ValidatedRequestRelease { get; set; }
     public Func<HttpMessageHandler>? GrpcHandler { get; set; }
+
     public AdminApiFactory()
     {
         Settings["AdminConfiguration:StoragePath"] = ConfigurationDirectory.FilePath;
     }
+
     public Dictionary<string, string?> Settings { get; } = new()
     {
         ["Moongate:AuthenticationEndpointId"] = "login",
@@ -47,27 +49,39 @@ public class AdminApiFactory : WebApplicationFactory<ApiProgram>
                 services.AddSingleton<ILogEventSink>(Logs);
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton(Clock);
-                if (GrpcHandler is not null) { services.AddHttpClient("MoongateAdmin").ConfigurePrimaryHttpMessageHandler(GrpcHandler); }
-                services.PostConfigure<JwtBearerOptions>("Bearer", options =>
+                if (GrpcHandler is not null)
                 {
-                    var original = options.Events.OnTokenValidated;
-                    options.Events.OnTokenValidated = async context =>
+                    services.AddHttpClient("MoongateAdmin").ConfigurePrimaryHttpMessageHandler(GrpcHandler);
+                }
+
+                services.PostConfigure<JwtBearerOptions>(
+                    "Bearer",
+                    options =>
                     {
-                        await original(context);
-                        if (context.Request.Path == "/api/servers/login" && ValidatedRequestEntered is not null && ValidatedRequestRelease is not null)
+                        var original = options.Events.OnTokenValidated;
+                        options.Events.OnTokenValidated = async context =>
                         {
-                            ValidatedRequestEntered.TrySetResult();
-                            await ValidatedRequestRelease.Task.WaitAsync(context.HttpContext.RequestAborted);
-                        }
-                    };
-                });
+                            await original(context);
+                            if (context.Request.Path == "/api/servers/login" && ValidatedRequestEntered is not null &&
+                                ValidatedRequestRelease is not null)
+                            {
+                                ValidatedRequestEntered.TrySetResult();
+                                await ValidatedRequestRelease.Task.WaitAsync(context.HttpContext.RequestAborted);
+                            }
+                        };
+                    }
+                );
             }
         );
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(Settings));
     }
+
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing && Directory.Exists(ConfigurationDirectory.Root)) { ConfigurationDirectory.Dispose(); }
+        if (disposing && Directory.Exists(ConfigurationDirectory.Root))
+        {
+            ConfigurationDirectory.Dispose();
+        }
     }
 }

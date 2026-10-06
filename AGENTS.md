@@ -16,6 +16,8 @@ The .NET 10 backend and its tests are implemented. Frontend application code is 
 - Do not connect directly to Moongate's PostgreSQL or Redis databases.
 - Validate certificate trust and hostnames. Never add a callback that accepts every certificate.
 - Do not automatically retry account creation or other mutations.
+- Keep connection configuration non-secret and separate from appsettings. Preserve one-time setup closure, atomic catalog updates, revision-bound JWT/request isolation, and upstream Administrator revalidation.
+- Never use a caller's existing private upstream token against an arbitrary candidate address; connection probes authenticate separately and discard their temporary sessions.
 
 ## Code and verification
 

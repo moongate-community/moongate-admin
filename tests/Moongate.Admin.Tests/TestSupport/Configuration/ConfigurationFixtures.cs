@@ -15,10 +15,16 @@ public static class ConfigurationFixtures
             Endpoints = [new MoongateEndpointOptions { Id = id, Label = id, Address = address }]
         };
     }
-    public static ConnectionCatalogStore Store(TemporaryConfigurationDirectory directory, IConfiguration? configuration = null)
+
+    public static ConnectionCatalogStore Store(
+        TemporaryConfigurationDirectory directory, IConfiguration? configuration = null
+    )
     {
         var environment = Host.CreateApplicationBuilder().Environment;
-        return new ConnectionCatalogStore(configuration ?? new ConfigurationBuilder().Build(),
-            new FileConnectionCatalogPersistence(directory.FilePath), new MoongateOptionsValidator(environment));
+        return new ConnectionCatalogStore(
+            configuration ?? new ConfigurationBuilder().Build(),
+            new FileConnectionCatalogPersistence(directory.FilePath),
+            new MoongateOptionsValidator(environment)
+        );
     }
 }

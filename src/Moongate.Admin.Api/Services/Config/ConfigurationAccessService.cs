@@ -11,10 +11,17 @@ public sealed class ConfigurationAccessService
     private readonly IConnectionCatalogStore _store;
     private readonly IMoongateAdminClient _client;
     private readonly AdminSessionAccessor _sessions;
-    public ConfigurationAccessService(SetupTokenService tokens, IConnectionCatalogStore store, IMoongateAdminClient client, AdminSessionAccessor sessions)
+
+    public ConfigurationAccessService(
+        SetupTokenService tokens, IConnectionCatalogStore store, IMoongateAdminClient client, AdminSessionAccessor sessions
+    )
     {
-        _tokens = tokens; _store = store; _client = client; _sessions = sessions;
+        _tokens = tokens;
+        _store = store;
+        _client = client;
+        _sessions = sessions;
     }
+
     public void RequireSetupToken(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -23,17 +30,20 @@ public sealed class ConfigurationAccessService
             throw new ConfigurationException(StatusCodes.Status401Unauthorized, "setup_token_required");
         }
     }
+
     public async Task RequireAdministratorAsync(HttpContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
         var session = await _sessions.GetAsync(context, cancellationToken)
-            ?? throw new ConfigurationException(StatusCodes.Status401Unauthorized, "authentication_required");
+                      ?? throw new ConfigurationException(StatusCodes.Status401Unauthorized, "authentication_required");
         if (!context.User.IsInRole("administrator"))
         {
             throw new ConfigurationException(StatusCodes.Status403Forbidden, "permission_denied");
         }
+
         await _client.ListAccountsAsync(1, 0, session.AccessToken, cancellationToken);
     }
+
     public async Task RequireProbeAccessAsync(HttpContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -41,6 +51,7 @@ public sealed class ConfigurationAccessService
         {
             return;
         }
+
         await RequireAdministratorAsync(context, cancellationToken);
     }
 }

@@ -28,14 +28,16 @@ public static class AdminServiceCollectionExtensions
         services.AddSingleton<MoongateOptionsValidator>();
         services.AddOptions<AdminConfigurationOptions>().Bind(configuration.GetSection("AdminConfiguration"));
         services.AddSingleton<IConnectionCatalogPersistence>(provider =>
-        {
-            var path = provider.GetRequiredService<IOptions<AdminConfigurationOptions>>().Value.StoragePath;
-            if (string.IsNullOrWhiteSpace(path))
             {
-                throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_load_failed");
+                var path = provider.GetRequiredService<IOptions<AdminConfigurationOptions>>().Value.StoragePath;
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_load_failed");
+                }
+
+                return new FileConnectionCatalogPersistence(Path.GetFullPath(path, environment.ContentRootPath));
             }
-            return new FileConnectionCatalogPersistence(Path.GetFullPath(path, environment.ContentRootPath));
-        });
+        );
         services.AddSingleton<ConnectionCatalogStore>();
         services.AddSingleton<IConnectionCatalogStore>(provider => provider.GetRequiredService<ConnectionCatalogStore>());
         services.AddHostedService(provider => provider.GetRequiredService<ConnectionCatalogStore>());
@@ -48,35 +50,47 @@ public static class AdminServiceCollectionExtensions
         services.AddSingleton<JwtSessionService>();
         services.AddScoped<AdminSessionAccessor>();
         services.AddAuthentication(AdminAuthentication.Scheme).AddJwtBearer();
-        services.AddOptions<JwtBearerOptions>(AdminAuthentication.Scheme).Configure<JwtSessionService>((options, sessions) =>
-        {
-            options.MapInboundClaims = false;
-            options.TokenValidationParameters = sessions.CreateValidationParameters();
-            options.Events = new JwtBearerEvents
-            {
-                OnTokenValidated = context =>
+        services.AddOptions<JwtBearerOptions>(AdminAuthentication.Scheme)
+            .Configure<JwtSessionService>((options, sessions) =>
                 {
-                    var session = sessions.Find(context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value);
-                    var snapshot = context.HttpContext.RequestServices.GetRequiredService<ConnectionCatalogSnapshot>();
-                    if (session is null || session.ConfigurationRevision != snapshot.Revision)
+                    options.MapInboundClaims = false;
+                    options.TokenValidationParameters = sessions.CreateValidationParameters();
+                    options.Events = new JwtBearerEvents
                     {
-                        context.Fail("Invalid administration session.");
-                    }
-                    else
-                    {
-                        context.HttpContext.Items[AdminAuthentication.SessionItem] = session;
-                    }
-                    return Task.CompletedTask;
-                },
-                OnChallenge = context =>
-                {
-                    context.HandleResponse();
-                    context.Response.Headers.WWWAuthenticate = "Bearer";
-                    return ProblemResponses.WriteAsync(context.HttpContext, StatusCodes.Status401Unauthorized, "authentication_required");
-                },
-                OnForbidden = context => ProblemResponses.WriteAsync(context.HttpContext, StatusCodes.Status403Forbidden, "permission_denied")
-            };
-        });
+                        OnTokenValidated = context =>
+                        {
+                            var session = sessions.Find(context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value);
+                            var snapshot =
+                                context.HttpContext.RequestServices.GetRequiredService<ConnectionCatalogSnapshot>();
+                            if (session is null || session.ConfigurationRevision != snapshot.Revision)
+                            {
+                                context.Fail("Invalid administration session.");
+                            }
+                            else
+                            {
+                                context.HttpContext.Items[AdminAuthentication.SessionItem] = session;
+                            }
+
+                            return Task.CompletedTask;
+                        },
+                        OnChallenge = context =>
+                        {
+                            context.HandleResponse();
+                            context.Response.Headers.WWWAuthenticate = "Bearer";
+                            return ProblemResponses.WriteAsync(
+                                context.HttpContext,
+                                StatusCodes.Status401Unauthorized,
+                                "authentication_required"
+                            );
+                        },
+                        OnForbidden = context => ProblemResponses.WriteAsync(
+                            context.HttpContext,
+                            StatusCodes.Status403Forbidden,
+                            "permission_denied"
+                        )
+                    };
+                }
+            );
         services.AddAuthorization(options =>
             {
                 options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
@@ -91,6 +105,7 @@ public static class AdminServiceCollectionExtensions
             {
                 options.AddSchemaTransformer<AdminCredentialSchemaTransformer>();
                 options.AddSchemaTransformer<AdminAccountSchemaTransformer>();
+                options.AddSchemaTransformer<AdminConfigurationSchemaTransformer>();
                 options.AddDocumentTransformer<AdminOpenApiTransformer>();
             }
         );

@@ -23,12 +23,16 @@ public sealed class MoongateOptionsValidator : IValidateOptions<MoongateOptions>
         {
             return ValidateOptionsResult.Fail("Invalid Moongate endpoint configuration.");
         }
+
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var endpoint in options.Endpoints)
         {
             if (endpoint is null || string.IsNullOrEmpty(endpoint.Id) || endpoint.Id.Length > MaximumIdLength ||
-                endpoint.Id.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '.' and not '_' and not '-') ||
-                string.IsNullOrWhiteSpace(endpoint.Label) || endpoint.Label.Length > MaximumLabelLength || endpoint.Label.Any(char.IsControl) ||
+                endpoint.Id.Any(character =>
+                    !char.IsAsciiLetterOrDigit(character) && character is not '.' and not '_' and not '-'
+                ) ||
+                string.IsNullOrWhiteSpace(endpoint.Label) || endpoint.Label.Length > MaximumLabelLength ||
+                endpoint.Label.Any(char.IsControl) ||
                 string.IsNullOrWhiteSpace(endpoint.Address) || endpoint.Address.Length > MaximumAddressLength ||
                 !ids.Add(endpoint.Id) || !Uri.TryCreate(endpoint.Address, UriKind.Absolute, out var uri) ||
                 !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) ||

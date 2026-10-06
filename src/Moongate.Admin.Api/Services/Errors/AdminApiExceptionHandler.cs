@@ -57,7 +57,11 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
             _ => "request_failed"
         };
         var extra = new Dictionary<string, object?>();
-        if (status == StatusCodes.Status401Unauthorized) { context.Response.Headers.WWWAuthenticate = "Bearer"; }
+        if (status == StatusCodes.Status401Unauthorized)
+        {
+            context.Response.Headers.WWWAuthenticate = "Bearer";
+        }
+
         if (exception is UpstreamCallException { MutationOutcomeUnknown: true })
         {
             extra["mutationOutcomeUnknown"] = true;

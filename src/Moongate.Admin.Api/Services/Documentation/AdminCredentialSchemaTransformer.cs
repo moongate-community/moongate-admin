@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Moongate.Admin.Api.Data.Accounts;
+using Moongate.Admin.Api.Data.Configuration;
 
 namespace Moongate.Admin.Api.Services.Documentation;
 
@@ -10,7 +11,9 @@ public sealed class AdminCredentialSchemaTransformer : IOpenApiSchemaTransformer
         OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken
     )
     {
-        if (context.JsonTypeInfo.Type != typeof(LoginRequest) && context.JsonTypeInfo.Type != typeof(CreateAccountRequest))
+        var probe = context.JsonTypeInfo.Type == typeof(ConnectionProbeRequest);
+        if (!probe && context.JsonTypeInfo.Type != typeof(LoginRequest) &&
+            context.JsonTypeInfo.Type != typeof(CreateAccountRequest))
         {
             return Task.CompletedTask;
         }
@@ -23,6 +26,11 @@ public sealed class AdminCredentialSchemaTransformer : IOpenApiSchemaTransformer
             {
                 property.Type = JsonSchemaType.String;
                 property.MinLength = 1;
+                if (probe)
+                {
+                    property.WriteOnly = true;
+                }
+
                 if (name == "password")
                 {
                     property.WriteOnly = true;

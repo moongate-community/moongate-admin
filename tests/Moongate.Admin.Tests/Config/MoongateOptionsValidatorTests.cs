@@ -17,6 +17,7 @@ public class MoongateOptionsValidatorTests
         var options = CreateOptions(address);
         Assert.True(CreateValidator("Development").Validate(null, options).Failed);
     }
+
     [Fact]
     public void Validate_MissingAuthenticationEndpoint_Fails()
     {
@@ -24,13 +25,19 @@ public class MoongateOptionsValidatorTests
         options.AuthenticationEndpointId = "missing";
         Assert.True(CreateValidator("Development").Validate(null, options).Failed);
     }
+
     [Fact]
     public void Validate_DuplicateEndpointId_Fails()
     {
         var options = CreateOptions("https://127.0.0.1:2590");
-        options.Endpoints = [options.Endpoints[0], new MoongateEndpointOptions { Id = "login", Label = "Other", Address = "https://127.0.0.1:2591" }];
+        options.Endpoints =
+        [
+            options.Endpoints[0],
+            new MoongateEndpointOptions { Id = "login", Label = "Other", Address = "https://127.0.0.1:2591" }
+        ];
         Assert.True(CreateValidator("Development").Validate(null, options).Failed);
     }
+
     [Theory]
     [InlineData("Development", true, true)]
     [InlineData("Development", false, false)]
@@ -41,14 +48,18 @@ public class MoongateOptionsValidatorTests
         options.AllowInsecureLoopback = allow;
         Assert.Equal(succeeds, CreateValidator(environment).Validate(null, options).Succeeded);
     }
+
     [Theory]
     [InlineData(16, true)]
     [InlineData(17, false)]
     public void Validate_EndpointCount_EnforcesLimit(int count, bool succeeds)
     {
         var options = CreateOptions("https://localhost:2590");
-        options.Endpoints = Enumerable.Range(0, count).Select(index =>
-            new MoongateEndpointOptions { Id = "server-" + index, Label = "Server", Address = "https://localhost:2590" }).ToArray();
+        options.Endpoints = Enumerable.Range(0, count)
+            .Select(index =>
+                new MoongateEndpointOptions { Id = "server-" + index, Label = "Server", Address = "https://localhost:2590" }
+            )
+            .ToArray();
         options.AuthenticationEndpointId = "server-0";
         Assert.Equal(succeeds, CreateValidator("Development").Validate(null, options).Succeeded);
     }
@@ -115,8 +126,11 @@ public class MoongateOptionsValidatorTests
             Endpoints = [new MoongateEndpointOptions { Id = "login", Label = "Login", Address = address }]
         };
     }
+
     private static MoongateOptionsValidator CreateValidator(string environment)
     {
-        return new MoongateOptionsValidator(Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = environment }).Environment);
+        return new MoongateOptionsValidator(
+            Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = environment }).Environment
+        );
     }
 }

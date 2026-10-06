@@ -7,6 +7,7 @@ public static class ConfigurationHttpFixtures
 {
     // Public disposable fixture data, never an operator credential.
     public const string SetupToken = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
     public static AdminApiFactory Unconfigured()
     {
         var factory = new AdminApiFactory();
@@ -15,9 +16,13 @@ public static class ConfigurationHttpFixtures
         factory.Settings["MOONGATE_ADMIN_SETUP_TOKEN"] = SetupToken;
         return factory;
     }
+
     public static MoongateOptions Candidate(string address, string id = "login")
     {
-        return new MoongateOptions { AuthenticationEndpointId = id, AllowInsecureLoopback = true,
-            Endpoints = [new MoongateEndpointOptions { Id = id, Label = id, Address = address }] };
+        return new MoongateOptions
+        {
+            AuthenticationEndpointId = id, AllowInsecureLoopback = true,
+            Endpoints = [new MoongateEndpointOptions { Id = id, Label = id, Address = address }]
+        };
     }
 }

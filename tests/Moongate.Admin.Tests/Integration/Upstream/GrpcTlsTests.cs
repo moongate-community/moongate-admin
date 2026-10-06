@@ -29,7 +29,8 @@ public class GrpcTlsTests
         await using var provider = services.BuildServiceProvider();
         var uri = new UriBuilder(fixture.Address) { Host = host };
         using var client = new GrpcMoongateAdminClient(
-            new ConnectionCatalogSnapshot("fixture",
+            new ConnectionCatalogSnapshot(
+                "fixture",
                 new MoongateOptions
                 {
                     AuthenticationEndpointId = "login",

@@ -168,6 +168,7 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
         {
             throw new ConfigurationException(StatusCodes.Status503ServiceUnavailable, "configuration_required");
         }
+
         if (!_channels.TryGetValue(serverId, out var channel))
         {
             throw new BadHttpRequestException("Server not found.", StatusCodes.Status404NotFound);

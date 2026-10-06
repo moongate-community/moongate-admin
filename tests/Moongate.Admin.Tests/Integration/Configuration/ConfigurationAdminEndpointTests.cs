@@ -23,7 +23,10 @@ public class ConfigurationAdminEndpointTests
         factory.UseGrpc(grpc);
         using var client = await AuthenticatedApiClient.CreateAsync(factory);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/configuration")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync("/api/configuration", ConfigurationHttpFixtures.Candidate(grpc.Address))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.PutAsJsonAsync("/api/configuration", ConfigurationHttpFixtures.Candidate(grpc.Address))).StatusCode
+        );
         Assert.Equal(0, grpc.Authority.ListCallCount);
     }
 
@@ -48,7 +51,11 @@ public class ConfigurationAdminEndpointTests
         factory.UseGrpc(grpc);
         using var client = await AuthenticatedApiClient.CreateAsync(factory);
         var original = factory.Services.GetRequiredService<IConnectionCatalogStore>().Current.Revision;
-        if (tag is not null) { client.DefaultRequestHeaders.TryAddWithoutValidation("If-Match", tag); }
+        if (tag is not null)
+        {
+            client.DefaultRequestHeaders.TryAddWithoutValidation("If-Match", tag);
+        }
+
         var response = await client.PutAsJsonAsync("/api/configuration", ConfigurationHttpFixtures.Candidate(grpc.Address));
         Assert.Equal(expected, (int)response.StatusCode);
         Assert.Equal(original, factory.Services.GetRequiredService<IConnectionCatalogStore>().Current.Revision);
@@ -66,13 +73,21 @@ public class ConfigurationAdminEndpointTests
         var read = await client.GetAsync("/api/configuration");
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
         client.DefaultRequestHeaders.TryAddWithoutValidation("If-Match", read.Headers.ETag?.Tag);
-        var saved = await client.PutAsJsonAsync("/api/configuration", ConfigurationHttpFixtures.Candidate(second.Address, "replacement"));
+        var saved = await client.PutAsJsonAsync(
+            "/api/configuration",
+            ConfigurationHttpFixtures.Candidate(second.Address, "replacement")
+        );
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
         Assert.NotEqual(read.Headers.ETag, saved.Headers.ETag);
-        Assert.True((await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reauthenticationRequired").GetBoolean());
+        Assert.True(
+            (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reauthenticationRequired").GetBoolean()
+        );
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/configuration")).StatusCode);
         using var next = await AuthenticatedApiClient.CreateAsync(factory);
-        Assert.Equal("replacement", (await next.GetFromJsonAsync<JsonElement>("/api/servers/replacement")).GetProperty("instanceId").GetString());
+        Assert.Equal(
+            "replacement",
+            (await next.GetFromJsonAsync<JsonElement>("/api/servers/replacement")).GetProperty("instanceId").GetString()
+        );
     }
 
     [Theory]
@@ -84,8 +99,15 @@ public class ConfigurationAdminEndpointTests
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
         using var client = await AuthenticatedApiClient.CreateAsync(factory);
-        if (revoked) { grpc.Authority.Revoked = true; }
-        else { grpc.Authority.Role = AccountType.GameMaster; }
+        if (revoked)
+        {
+            grpc.Authority.Revoked = true;
+        }
+        else
+        {
+            grpc.Authority.Role = AccountType.GameMaster;
+        }
+
         Assert.Equal(expected, (int)(await client.GetAsync("/api/configuration")).StatusCode);
         Assert.False(File.Exists(factory.ConfigurationDirectory.FilePath));
     }
