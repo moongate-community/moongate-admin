@@ -27,7 +27,7 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
             },
             _ => 500
         };
-        if (status == 401 && context.User.Identity?.IsAuthenticated == true)
+        if ((status == 401 && context.User.Identity?.IsAuthenticated == true) || context.Items.ContainsKey("LocalSessionCleared"))
         {
             await context.SignOutAsync();
         }

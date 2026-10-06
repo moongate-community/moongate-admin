@@ -12,6 +12,8 @@ public class Program
         builder.Services.AddMoongateAdmin(builder.Configuration, builder.Environment);
         var app = builder.Build();
         app.UseExceptionHandler();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapMoongateAdmin();
         await app.RunAsync();
     }
