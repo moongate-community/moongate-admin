@@ -14,6 +14,8 @@ using Moongate.Admin.Api.Services.Errors;
 using Moongate.Admin.Api.Services.Upstream;
 using Moongate.Admin.Api.Services.Serialization;
 using Moongate.Admin.Api.Types.Authentication;
+using Moongate.Admin.Api.Interfaces.Configuration;
+using Moongate.Admin.Api.Data.Internal.Configuration;
 
 namespace Moongate.Admin.Api.Extensions;
 
@@ -23,8 +25,21 @@ public static class AdminServiceCollectionExtensions
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment
     )
     {
-        services.AddSingleton<IValidateOptions<MoongateOptions>>(new MoongateOptionsValidator(environment));
-        services.AddOptions<MoongateOptions>().Bind(configuration.GetSection("Moongate")).ValidateOnStart();
+        services.AddSingleton<MoongateOptionsValidator>();
+        services.AddOptions<AdminConfigurationOptions>().Bind(configuration.GetSection("AdminConfiguration"));
+        services.AddSingleton<IConnectionCatalogPersistence>(provider =>
+        {
+            var path = provider.GetRequiredService<IOptions<AdminConfigurationOptions>>().Value.StoragePath;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ConfigurationException(StatusCodes.Status500InternalServerError, "configuration_load_failed");
+            }
+            return new FileConnectionCatalogPersistence(Path.GetFullPath(path, environment.ContentRootPath));
+        });
+        services.AddSingleton<ConnectionCatalogStore>();
+        services.AddSingleton<IConnectionCatalogStore>(provider => provider.GetRequiredService<ConnectionCatalogStore>());
+        services.AddHostedService(provider => provider.GetRequiredService<ConnectionCatalogStore>());
+        services.AddScoped(provider => provider.GetRequiredService<IConnectionCatalogStore>().Current);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<JwtSessionService>();
         services.AddScoped<AdminSessionAccessor>();
@@ -38,7 +53,8 @@ public static class AdminServiceCollectionExtensions
                 OnTokenValidated = context =>
                 {
                     var session = sessions.Find(context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value);
-                    if (session is null)
+                    var snapshot = context.HttpContext.RequestServices.GetRequiredService<ConnectionCatalogSnapshot>();
+                    if (session is null || session.ConfigurationRevision != snapshot.Revision)
                     {
                         context.Fail("Invalid administration session.");
                     }
@@ -78,7 +94,7 @@ public static class AdminServiceCollectionExtensions
         services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
         services.AddHttpClient("MoongateAdmin")
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
-        services.AddSingleton<IMoongateAdminClient, GrpcMoongateAdminClient>();
+        services.AddScoped<IMoongateAdminClient, GrpcMoongateAdminClient>();
         services.ConfigureHttpJsonOptions(options =>
             {
                 options.SerializerOptions.RespectNullableAnnotations = true;

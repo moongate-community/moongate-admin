@@ -24,9 +24,10 @@ public sealed class JwtSessionService : IDisposable
     {
         _clock = clock;
     }
-    public JwtLoginResponse Create(UpstreamLoginResult login)
+    public JwtLoginResponse Create(UpstreamLoginResult login, string configurationRevision)
     {
         ArgumentNullException.ThrowIfNull(login);
+        ArgumentException.ThrowIfNullOrEmpty(configurationRevision);
         var expiry = DateTimeOffset.FromUnixTimeSeconds(login.ExpiresAt.ToUnixTimeSeconds());
         if (expiry <= _clock.GetUtcNow())
         {
@@ -35,7 +36,8 @@ public sealed class JwtSessionService : IDisposable
         var id = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(KeyBytes));
         var session = new AdminSession
         {
-            SessionId = id, AccessToken = login.AccessToken, ExpiresAt = expiry, Account = login.Account
+            SessionId = id, AccessToken = login.AccessToken, ExpiresAt = expiry, Account = login.Account,
+            ConfigurationRevision = configurationRevision
         };
         var jwt = new JwtSecurityToken(AdminAuthentication.Issuer, AdminAuthentication.Audience,
         [

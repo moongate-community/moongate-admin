@@ -4,6 +4,7 @@ using Moongate.Admin.Api.Interfaces.Upstream;
 using Moongate.Admin.Api.Internal;
 using Moongate.Admin.Api.Services.Authentication;
 using Serilog;
+using Moongate.Admin.Api.Data.Internal.Configuration;
 
 namespace Moongate.Admin.Api.Extensions;
 
@@ -16,11 +17,11 @@ public static class AuthEndpointRouteBuilderExtensions
         return endpoints;
     }
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext context, IMoongateAdminClient client,
-        AdminSessionAccessor accessor, JwtSessionService sessions, CancellationToken cancellationToken)
+        AdminSessionAccessor accessor, JwtSessionService sessions, ConnectionCatalogSnapshot snapshot, CancellationToken cancellationToken)
     {
         var old = await accessor.GetAsync(context, cancellationToken);
         var login = await client.LoginAsync(request, cancellationToken);
-        var response = sessions.Create(login);
+        var response = sessions.Create(login, snapshot.Revision);
         if (old is not null)
         {
             sessions.Remove(old.SessionId);

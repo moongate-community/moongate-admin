@@ -15,15 +15,18 @@ public sealed class FakeAdminServerService : AdminServer.AdminServerBase
         _state = state;
     }
 
-    public override Task<GetServerInfoResponse> GetServerInfo(Empty request, ServerCallContext context)
+    public override async Task<GetServerInfoResponse> GetServerInfo(Empty request, ServerCallContext context)
     {
         _authority.Check(context);
-        return Task.FromResult(
-            new GetServerInfoResponse
+        if (_authority.InformationEntered is not null && _authority.InformationRelease is not null)
+        {
+            _authority.InformationEntered.TrySetResult();
+            await _authority.InformationRelease.Task.WaitAsync(context.CancellationToken);
+        }
+        return new GetServerInfoResponse
             {
                 Version = "0.14.0", Codename = "fixture", InstanceId = _state.InstanceId,
                 RealmId = "realm-1", Mode = _state.Mode, UptimeSeconds = ulong.MaxValue
-            }
-        );
+            };
     }
 }

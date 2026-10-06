@@ -8,7 +8,11 @@ namespace Moongate.Admin.Tests.TestSupport.Grpc;
 
 public sealed class FakeAdminAuthority
 {
-    private readonly HashSet<string> _tokens = [];
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _tokens = new();
+    public TaskCompletionSource? LoginEntered { get; set; }
+    public TaskCompletionSource? LoginRelease { get; set; }
+    public TaskCompletionSource? InformationEntered { get; set; }
+    public TaskCompletionSource? InformationRelease { get; set; }
     public string Token { get; private set; } = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
     public AccountType Role { get; set; } = AccountType.Administrator;
     public bool Revoked { get; set; }
@@ -41,15 +45,16 @@ public sealed class FakeAdminAuthority
 
     public void Check(ServerCallContext context, bool administrator = false)
     {
-        LastAuthorization = context.RequestHeaders.GetValue("authorization");
+        var authorization = context.RequestHeaders.GetValue("authorization");
+        LastAuthorization = authorization;
         LastDeadline = context.Deadline;
         if (Failure is { } failure)
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
         }
 
-        if (Revoked || LastAuthorization is null ||
-            !_tokens.Contains(LastAuthorization.Replace("Bearer ", "", StringComparison.Ordinal)))
+        if (Revoked || authorization is null ||
+            !_tokens.ContainsKey(authorization.Replace("Bearer ", "", StringComparison.Ordinal)))
         {
             throw new RpcException(new Status(StatusCode.Unauthenticated, "revoked"));
         }
@@ -63,7 +68,7 @@ public sealed class FakeAdminAuthority
     public string IssueToken()
     {
         Token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-        _tokens.Add(Token);
+        _tokens.TryAdd(Token, 0);
         Revoked = false;
         return Token;
     }
@@ -72,7 +77,7 @@ public sealed class FakeAdminAuthority
     {
         if (token is not null)
         {
-            _tokens.Remove(token);
+            _tokens.TryRemove(token, out _);
             if (token == Token)
             {
                 Revoked = true;
