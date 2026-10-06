@@ -6,6 +6,10 @@ namespace Moongate.Admin.Api.Services.Config;
 
 public sealed class MoongateOptionsValidator : IValidateOptions<MoongateOptions>
 {
+    private const int MaximumEndpoints = 16;
+    private const int MaximumIdLength = 64;
+    private const int MaximumLabelLength = 100;
+    private const int MaximumAddressLength = 2048;
     private readonly IHostEnvironment _environment;
 
     public MoongateOptionsValidator(IHostEnvironment environment)
@@ -15,10 +19,17 @@ public sealed class MoongateOptionsValidator : IValidateOptions<MoongateOptions>
 
     public ValidateOptionsResult Validate(string? name, MoongateOptions options)
     {
+        if (options.Endpoints is null || options.Endpoints.Count is 0 or > MaximumEndpoints)
+        {
+            return ValidateOptionsResult.Fail("Invalid Moongate endpoint configuration.");
+        }
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var endpoint in options.Endpoints)
         {
-            if (string.IsNullOrWhiteSpace(endpoint.Id) || string.IsNullOrWhiteSpace(endpoint.Label) ||
+            if (endpoint is null || string.IsNullOrEmpty(endpoint.Id) || endpoint.Id.Length > MaximumIdLength ||
+                endpoint.Id.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '.' and not '_' and not '-') ||
+                string.IsNullOrWhiteSpace(endpoint.Label) || endpoint.Label.Length > MaximumLabelLength || endpoint.Label.Any(char.IsControl) ||
+                string.IsNullOrWhiteSpace(endpoint.Address) || endpoint.Address.Length > MaximumAddressLength ||
                 !ids.Add(endpoint.Id) || !Uri.TryCreate(endpoint.Address, UriKind.Absolute, out var uri) ||
                 !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) ||
                 !string.IsNullOrEmpty(uri.Fragment) || uri.AbsolutePath != "/")

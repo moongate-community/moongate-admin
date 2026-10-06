@@ -23,6 +23,7 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
 
         var status = exception switch
         {
+            ConfigurationException configuration => configuration.StatusCode,
             BadHttpRequestException bad => bad.StatusCode,
             UpstreamCallException call => call.StatusCode switch
             {
@@ -48,9 +49,12 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
             }
         }
 
-        var code = exception is UpstreamCallException upstream
-            ? "upstream_" + upstream.StatusCode.ToString().ToLowerInvariant()
-            : "request_failed";
+        var code = exception switch
+        {
+            ConfigurationException configuration => configuration.Code,
+            UpstreamCallException upstream => "upstream_" + upstream.StatusCode.ToString().ToLowerInvariant(),
+            _ => "request_failed"
+        };
         var extra = new Dictionary<string, object?>();
         if (exception is UpstreamCallException { MutationOutcomeUnknown: true })
         {
