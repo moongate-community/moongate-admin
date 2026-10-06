@@ -6,6 +6,7 @@ using Moongate.Admin.Tests.TestSupport.Configuration;
 
 namespace Moongate.Admin.Tests.Integration.Configuration;
 
+[Collection("Logging")]
 public class ConfigurationSetupEndpointTests
 {
     [Fact]

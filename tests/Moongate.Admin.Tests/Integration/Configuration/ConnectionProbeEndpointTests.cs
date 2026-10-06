@@ -10,6 +10,7 @@ using Moongate.Admin.Tests.TestSupport.Hosting;
 
 namespace Moongate.Admin.Tests.Integration.Configuration;
 
+[Collection("Logging")]
 public class ConnectionProbeEndpointTests
 {
     [Fact]
