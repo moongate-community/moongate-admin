@@ -4,7 +4,9 @@
 
 Administration application for [Moongate](https://github.com/moongate-community/moongate).
 
-The project will contain a .NET 10 REST Web API and a web frontend in this repository. This initial change establishes repository settings and documents the integration boundary; the applications are not implemented yet.
+The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. The REST API uses JWT Bearer authentication. Swagger UI is available at `/swagger` in Development. The frontend remains a later stage.
+
+Start the backend with `dotnet run --project src/Moongate.Admin.Api`. See [backend setup and REST operations](docs/backend.md) for HTTPS, endpoint configuration, JWT Bearer flows, and verification.
 
 ## Connection model
 
@@ -12,11 +14,11 @@ The project will contain a .NET 10 REST Web API and a web frontend in this repos
 Browser frontend -> Moongate Admin REST API (.NET 10) -> Moongate administration gRPC API
 ```
 
-Moongate already exposes versioned administration contracts (`moongate.admin.v1`) through its optional gRPC listener, normally using TLS on port 2590. The REST backend will consume the published `Moongate.Admin.Contracts` package. The browser will communicate with the REST backend; upstream credentials and access tokens will stay in backend memory.
+Moongate already exposes versioned administration contracts (`moongate.admin.v1`) through its optional gRPC listener, normally using TLS on port 2590. The REST backend consumes the published `Moongate.Admin.Contracts` package. Clients communicate with the REST backend; upstream access tokens stay in backend memory.
 
 See the upstream [administration API guide](https://github.com/moongate-community/moongate/blob/develop/docs/admin-api.md) for endpoint setup, certificate trust, account permissions, and service availability.
 
-## Proposed first application scope
+## Supported backend operations
 
 1. Sign in and sign out using an API-enabled Moongate account.
 2. Display information for configured Login, Game, or Standalone servers.
@@ -26,18 +28,18 @@ See the upstream [administration API guide](https://github.com/moongate-communit
 
 Account administration requires an Administrator account and a Login or Standalone endpoint. The frontend will reflect these permissions, and the backend and upstream service will enforce them.
 
-The proposed frontend is React with TypeScript and Vite, following the upstream administration guide. The application design still requires review before implementation.
+Frontend implementation is deferred. Its current proposal uses React, TypeScript, and Vite, following the upstream administration guide.
 
-## Planned layout
+## Layout
 
 ```text
 src/Moongate.Admin.Api/       REST host, sessions, and gRPC adapter
-frontend/                   React and TypeScript application
+frontend/public/            Copied branding icons; application deferred
 tests/Moongate.Admin.Tests/  Backend unit and integration tests
 MoongateAdmin.slnx           Backend solution
 ```
 
-These paths describe the proposed layout; the application projects have not been generated. `MoongateAdmin.slnx.DotSettings` is prepared for that future solution.
+`MoongateAdmin.slnx` contains the backend and test projects. Sessions are local to one backend instance and end on restart.
 
 ## Conventions and branding
 
@@ -50,9 +52,9 @@ Use `develop` as the integration branch, feature branches for changes, and pull 
 ## Development requirements
 
 - .NET 10 SDK.
-- Node.js 24 LTS and npm for the proposed frontend.
+- Node.js 18 or newer for the optional Swagger script smoke check; npm will be needed when frontend work starts.
 - An enabled Moongate administration endpoint for live integration.
 
 Keep credentials in the designated secret store and supply them at runtime. Do not commit credentials, access tokens, private keys, or environment files. Trust the upstream certificate chain and hostname; do not disable certificate verification.
 
-Implementation is tracked in [issue #1](https://github.com/moongate-community/moongate-admin/issues/1).
+Backend implementation is tracked in [issue #3](https://github.com/moongate-community/moongate-admin/issues/3). Initialization is tracked in [issue #1](https://github.com/moongate-community/moongate-admin/issues/1).
