@@ -124,8 +124,9 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
         catch (RpcException exception)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var uncertain = mutation && exception.StatusCode is StatusCode.DeadlineExceeded or StatusCode.Unavailable or StatusCode.Cancelled or StatusCode.Unknown or StatusCode.Internal;
-            throw new UpstreamCallException(exception.StatusCode, uncertain);
+            var status = exception.Status.DebugException is HttpRequestException ? StatusCode.Unavailable : exception.StatusCode;
+            var uncertain = mutation && status is StatusCode.DeadlineExceeded or StatusCode.Unavailable or StatusCode.Cancelled or StatusCode.Unknown or StatusCode.Internal;
+            throw new UpstreamCallException(status, uncertain);
         }
     }
     public void Dispose()
