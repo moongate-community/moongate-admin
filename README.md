@@ -52,7 +52,7 @@ Use `develop` as the integration branch, feature branches for changes, and pull 
 ## Development requirements
 
 - .NET 10 SDK.
-- Node.js and npm will be needed when frontend work starts.
+- Node.js 18 or newer for the optional Swagger script smoke check; npm will be needed when frontend work starts.
 - An enabled Moongate administration endpoint for live integration.
 
 Keep credentials in the designated secret store and supply them at runtime. Do not commit credentials, access tokens, private keys, or environment files. Trust the upstream certificate chain and hostname; do not disable certificate verification.

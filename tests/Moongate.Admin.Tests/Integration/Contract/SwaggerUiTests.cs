@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Moongate.Admin.Tests.TestSupport.Authentication;
 using Moongate.Admin.Tests.TestSupport.Hosting;
 
@@ -31,5 +33,16 @@ public class SwaggerUiTests
     {
         await using var factory = new AdminApiFactory { EnvironmentName = "Production" };
         Assert.Equal(HttpStatusCode.NotFound, (await AuthenticatedApiClient.Create(factory).GetAsync(path)).StatusCode);
+    }
+    [Theory]
+    [InlineData("/api/auth/login")]
+    [InlineData("/api/auth/logout")]
+    public async Task Swagger_OptionalAuthentication_AttachesAuthorizedBearer(string path)
+    {
+        await using var factory = new AdminApiFactory();
+        var document = await AuthenticatedApiClient.Create(factory).GetFromJsonAsync<JsonElement>("/openapi/v1.json");
+        var security = document.GetProperty("paths").GetProperty(path).GetProperty("post").GetProperty("security");
+        Assert.Contains(security.EnumerateArray(), requirement => requirement.TryGetProperty("AdminBearer", out _));
+        Assert.Contains(security.EnumerateArray(), requirement => !requirement.EnumerateObject().Any());
     }
 }

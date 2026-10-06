@@ -28,5 +28,10 @@ const sandbox = {
   assert.equal(document.components.securitySchemes.AdminBearer.scheme, 'bearer');
   assert.equal(document.components.securitySchemes.AdminBearer.bearerFormat, 'JWT');
   assert.equal(document.paths['/api/auth/csrf'], undefined);
+  for (const path of ['/api/auth/login', '/api/auth/logout']) {
+    const requirements = document.paths[path].post.security;
+    assert.ok(requirements.some(requirement => Object.hasOwn(requirement, 'AdminBearer')));
+    assert.ok(requirements.some(requirement => Object.keys(requirement).length === 0));
+  }
   console.log('Swagger bootstrap, OpenAPI binding, and JWT Bearer configuration verified.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

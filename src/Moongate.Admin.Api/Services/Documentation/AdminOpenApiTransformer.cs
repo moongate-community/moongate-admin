@@ -29,13 +29,13 @@ public sealed class AdminOpenApiTransformer : IOpenApiDocumentTransformer
             foreach (var method in operations)
             {
                 var operation = method.Value;
-                if (path.Key is not ("/api/auth/login" or "/api/auth/logout"))
+                operation.Security =
+                [
+                    new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("AdminBearer", document)] = [] }
+                ];
+                if (path.Key is "/api/auth/login" or "/api/auth/logout")
                 {
-                    operation.Security =
-                    [
-                        new OpenApiSecurityRequirement
-                            { [new OpenApiSecuritySchemeReference("AdminBearer", document)] = [] }
-                    ];
+                    operation.Security.Add(new OpenApiSecurityRequirement());
                 }
 
                 operation.Responses ??= new OpenApiResponses();
