@@ -16,6 +16,7 @@ public class AdminApiFactory : WebApplicationFactory<ApiProgram>
     public TemporaryConfigurationDirectory ConfigurationDirectory { get; } = new();
     public TaskCompletionSource? ValidatedRequestEntered { get; set; }
     public TaskCompletionSource? ValidatedRequestRelease { get; set; }
+    public Func<HttpMessageHandler>? GrpcHandler { get; set; }
     public AdminApiFactory()
     {
         Settings["AdminConfiguration:StoragePath"] = ConfigurationDirectory.FilePath;
@@ -46,6 +47,7 @@ public class AdminApiFactory : WebApplicationFactory<ApiProgram>
                 services.AddSingleton<ILogEventSink>(Logs);
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton(Clock);
+                if (GrpcHandler is not null) { services.AddHttpClient("MoongateAdmin").ConfigurePrimaryHttpMessageHandler(GrpcHandler); }
                 services.PostConfigure<JwtBearerOptions>("Bearer", options =>
                 {
                     var original = options.Events.OnTokenValidated;

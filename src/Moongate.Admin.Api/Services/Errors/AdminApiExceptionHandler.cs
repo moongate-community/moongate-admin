@@ -40,7 +40,8 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
             },
             _ => 500
         };
-        if ((status == 401 && context.User.Identity?.IsAuthenticated == true) ||
+        if ((exception is UpstreamCallException { StatusCode: StatusCode.Unauthenticated, InvalidatesLocalSession: true } &&
+             context.User.Identity?.IsAuthenticated == true) ||
             context.Items.ContainsKey("LocalSessionCleared"))
         {
             if (context.Items[AdminAuthentication.SessionItem] is AdminSession session)
@@ -56,6 +57,7 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
             _ => "request_failed"
         };
         var extra = new Dictionary<string, object?>();
+        if (status == StatusCodes.Status401Unauthorized) { context.Response.Headers.WWWAuthenticate = "Bearer"; }
         if (exception is UpstreamCallException { MutationOutcomeUnknown: true })
         {
             extra["mutationOutcomeUnknown"] = true;

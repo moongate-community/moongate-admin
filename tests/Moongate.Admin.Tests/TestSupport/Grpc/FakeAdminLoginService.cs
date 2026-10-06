@@ -21,7 +21,8 @@ public sealed class FakeAdminLoginService : AdminLogin.AdminLoginBase
         if (_authority.LoginEntered is not null && _authority.LoginRelease is not null)
         {
             _authority.LoginEntered.TrySetResult();
-            await _authority.LoginRelease.Task.WaitAsync(context.CancellationToken);
+            try { await _authority.LoginRelease.Task.WaitAsync(context.CancellationToken); }
+            catch (OperationCanceledException) { _authority.LoginCancelled?.TrySetResult(); throw; }
         }
         if (_authority.Failure is { } failure)
         {

@@ -8,6 +8,7 @@ public static class AdminEndpointRouteBuilderExtensions
         endpoints.MapAdminAuth();
         endpoints.MapAdminServers();
         endpoints.MapAdminAccounts();
+        endpoints.MapAdminConfiguration();
         return endpoints;
     }
 }

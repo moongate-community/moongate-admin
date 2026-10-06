@@ -39,6 +39,10 @@ public static class AdminServiceCollectionExtensions
         services.AddSingleton<ConnectionCatalogStore>();
         services.AddSingleton<IConnectionCatalogStore>(provider => provider.GetRequiredService<ConnectionCatalogStore>());
         services.AddHostedService(provider => provider.GetRequiredService<ConnectionCatalogStore>());
+        services.AddSingleton<SetupTokenService>();
+        services.AddHostedService(provider => provider.GetRequiredService<SetupTokenService>());
+        services.AddScoped<ConfigurationAccessService>();
+        services.AddScoped<ConnectionProbeService>();
         services.AddScoped(provider => provider.GetRequiredService<IConnectionCatalogStore>().Current);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<JwtSessionService>();

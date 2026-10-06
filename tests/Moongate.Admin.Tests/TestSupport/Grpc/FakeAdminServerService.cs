@@ -26,7 +26,7 @@ public sealed class FakeAdminServerService : AdminServer.AdminServerBase
         return new GetServerInfoResponse
             {
                 Version = "0.14.0", Codename = "fixture", InstanceId = _state.InstanceId,
-                RealmId = "realm-1", Mode = _state.Mode, UptimeSeconds = ulong.MaxValue
+                RealmId = "realm-1", Mode = _state.ReportedMode ?? _state.Mode, UptimeSeconds = ulong.MaxValue
             };
     }
 }

@@ -11,6 +11,8 @@ public sealed class FakeAdminAuthority
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _tokens = new();
     public TaskCompletionSource? LoginEntered { get; set; }
     public TaskCompletionSource? LoginRelease { get; set; }
+    public TaskCompletionSource? LoginCancelled { get; set; }
+    public StatusCode? LogoutFailure { get; set; }
     public TaskCompletionSource? InformationEntered { get; set; }
     public TaskCompletionSource? InformationRelease { get; set; }
     public string Token { get; private set; } = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
