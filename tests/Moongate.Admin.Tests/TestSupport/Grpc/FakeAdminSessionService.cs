@@ -17,7 +17,7 @@ public sealed class FakeAdminSessionService : AdminSession.AdminSessionBase
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
         }
-        _authority.Revoked = true;
+        _authority.RemoveToken(context.RequestHeaders.GetValue("authorization")?.Replace("Bearer ", "", StringComparison.Ordinal));
         return Task.FromResult(new Empty());
     }
 }

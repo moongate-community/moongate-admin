@@ -12,6 +12,14 @@ public class Program
         builder.Services.AddMoongateAdmin(builder.Configuration, builder.Environment);
         var app = builder.Build();
         app.UseExceptionHandler();
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.Headers.CacheControl = "no-store";
+            }
+            await next(context);
+        });
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapMoongateAdmin();

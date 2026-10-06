@@ -8,7 +8,8 @@ namespace Moongate.Admin.Tests.TestSupport.Grpc;
 
 public sealed class FakeAdminAuthority
 {
-    public string Token { get; } = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+    private readonly HashSet<string> _tokens = [];
+    public string Token { get; private set; } = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
     public AccountType Role { get; set; } = AccountType.Administrator;
     public bool Revoked { get; set; }
     public StatusCode? Failure { get; set; }
@@ -43,13 +44,31 @@ public sealed class FakeAdminAuthority
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
         }
-        if (Revoked || LastAuthorization != "Bearer " + Token)
+        if (Revoked || LastAuthorization is null || !_tokens.Contains(LastAuthorization.Replace("Bearer ", "", StringComparison.Ordinal)))
         {
             throw new RpcException(new Status(StatusCode.Unauthenticated, "revoked"));
         }
         if (administrator && Role != AccountType.Administrator)
         {
             throw new RpcException(new Status(StatusCode.PermissionDenied, "denied"));
+        }
+    }
+    public string IssueToken()
+    {
+        Token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        _tokens.Add(Token);
+        Revoked = false;
+        return Token;
+    }
+    public void RemoveToken(string? token)
+    {
+        if (token is not null)
+        {
+            _tokens.Remove(token);
+            if (token == Token)
+            {
+                Revoked = true;
+            }
         }
     }
     public void RevokeIssuedToken()

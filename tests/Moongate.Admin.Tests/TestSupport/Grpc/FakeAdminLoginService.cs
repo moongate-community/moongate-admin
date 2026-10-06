@@ -23,7 +23,7 @@ public sealed class FakeAdminLoginService : AdminLogin.AdminLoginBase
         _authority.Revoked = false;
         return Task.FromResult(new LoginResponse
         {
-            Account = _authority.Summary(request.Username), AccessToken = _authority.Token,
+            Account = _authority.Summary(request.Username), AccessToken = _authority.IssueToken(),
             ExpiresAt = Timestamp.FromDateTimeOffset(_authority.ExpiresAt)
         });
     }

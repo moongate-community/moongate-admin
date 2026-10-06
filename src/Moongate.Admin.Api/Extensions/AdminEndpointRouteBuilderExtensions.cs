@@ -6,6 +6,7 @@ public static class AdminEndpointRouteBuilderExtensions
     {
         endpoints.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
         endpoints.MapAdminAuth();
+        endpoints.MapAdminServers();
         return endpoints;
     }
 }
