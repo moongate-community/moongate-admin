@@ -14,10 +14,10 @@ public sealed class AdminOpenApiTransformer : IOpenApiDocumentTransformer
         document.Info.Version = "v1";
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-        document.Components.SecuritySchemes["AdminSession"] = new OpenApiSecurityScheme
+        document.Components.SecuritySchemes["AdminBearer"] = new OpenApiSecurityScheme
         {
-            Type = SecuritySchemeType.ApiKey, In = ParameterLocation.Cookie, Name = AdminAuthentication.Cookie,
-            Description = "Opaque session reference. Obtain it through login; upstream tokens are never exposed."
+            Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT",
+            Description = "REST JWT returned by login. Send Authorization: Bearer; the upstream token remains private."
         };
         foreach (var path in document.Paths)
         {
@@ -29,26 +29,13 @@ public sealed class AdminOpenApiTransformer : IOpenApiDocumentTransformer
             foreach (var method in operations)
             {
                 var operation = method.Value;
-                if (path.Key is not ("/api/auth/csrf" or "/api/auth/login" or "/api/auth/logout"))
+                if (path.Key is not ("/api/auth/login" or "/api/auth/logout"))
                 {
                     operation.Security =
                     [
                         new OpenApiSecurityRequirement
-                            { [new OpenApiSecuritySchemeReference("AdminSession", document)] = [] }
+                            { [new OpenApiSecuritySchemeReference("AdminBearer", document)] = [] }
                     ];
-                }
-
-                if (method.Key.ToString().Equals("POST", StringComparison.OrdinalIgnoreCase))
-                {
-                    operation.Parameters ??= [];
-                    operation.Parameters.Add(
-                        new OpenApiParameter
-                        {
-                            Name = AdminAuthentication.CsrfHeader, In = ParameterLocation.Header, Required = true,
-                            Description = "Fetch /api/auth/csrf before mutation and after authentication changes.",
-                            Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                        }
-                    );
                 }
 
                 operation.Responses ??= new OpenApiResponses();

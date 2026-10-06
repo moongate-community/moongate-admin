@@ -35,15 +35,15 @@ public class AccountSessionEndpointTests
     }
 
     [Fact]
-    public async Task Revoke_MissingCsrf_FailsBeforeMutation()
+    public async Task Revoke_MissingBearer_FailsBeforeMutation()
     {
         await using var grpc = await AdminGrpcFixture.StartAsync();
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
         var client = await AuthenticatedApiClient.CreateAsync(factory);
-        client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        client.DefaultRequestHeaders.Authorization = null;
         Assert.Equal(
-            HttpStatusCode.BadRequest,
+            HttpStatusCode.Unauthorized,
             (await client.PostAsync("/api/accounts/8/revoke-sessions", null)).StatusCode
         );
         Assert.Equal((uint)0, grpc.Authority.LastRevokedAccount);

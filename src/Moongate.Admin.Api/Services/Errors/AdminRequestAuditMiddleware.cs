@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using Serilog;
 
 namespace Moongate.Admin.Api.Services.Errors;
@@ -27,7 +28,7 @@ public sealed class AdminRequestAuditMiddleware
                 _logger.Information(
                     "Administration operation {Operation} account {AccountId} status {Status} correlation {CorrelationId}",
                     operation,
-                    context.User.FindFirstValue(ClaimTypes.NameIdentifier),
+                    context.User.FindFirstValue(JwtRegisteredClaimNames.Sub),
                     context.Response.StatusCode,
                     context.TraceIdentifier
                 );

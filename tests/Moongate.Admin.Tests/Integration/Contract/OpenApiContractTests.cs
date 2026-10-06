@@ -19,7 +19,7 @@ public class OpenApiContractTests
         Assert.True(paths.TryGetProperty("/health/live", out _));
         foreach (var path in new[]
                  {
-                     "/api/auth/csrf", "/api/auth/login", "/api/auth/logout", "/api/auth/session", "/api/servers",
+                     "/api/auth/login", "/api/auth/logout", "/api/auth/session", "/api/servers",
                      "/api/servers/{id}", "/api/accounts", "/api/accounts/{id}/revoke-sessions"
                  })
         {
@@ -30,14 +30,10 @@ public class OpenApiContractTests
         Assert.True(create.GetProperty("responses").TryGetProperty("201", out _));
         var revoke = paths.GetProperty("/api/accounts/{id}/revoke-sessions").GetProperty("post");
         Assert.True(revoke.GetProperty("responses").TryGetProperty("204", out _));
-        Assert.Contains(
-            create.GetProperty("parameters").EnumerateArray(),
-            parameter => parameter.GetProperty("name").GetString() == "X-CSRF-TOKEN" &&
-                         parameter.GetProperty("required").GetBoolean()
-        );
-        var security = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("AdminSession");
-        Assert.Equal("cookie", security.GetProperty("in").GetString());
-        Assert.Equal("__Host-MoongateAdmin", security.GetProperty("name").GetString());
+        var security = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("AdminBearer");
+        Assert.Equal("http", security.GetProperty("type").GetString());
+        Assert.Equal("bearer", security.GetProperty("scheme").GetString());
+        Assert.False(paths.TryGetProperty("/api/auth/csrf", out _));
         var schemas = document.GetProperty("components").GetProperty("schemas");
         Assert.Equal(
             "integer",
@@ -71,7 +67,7 @@ public class OpenApiContractTests
         Assert.True(loginSchema.GetProperty("properties").GetProperty("password").GetProperty("writeOnly").GetBoolean());
         Assert.Contains(loginSchema.GetProperty("required").EnumerateArray(), field => field.GetString() == "username");
         Assert.Contains(loginSchema.GetProperty("required").EnumerateArray(), field => field.GetString() == "password");
-        Assert.DoesNotContain("accessToken", document.ToString());
+        Assert.True(schemas.GetProperty("JwtLoginResponse").GetProperty("properties").TryGetProperty("accessToken", out _));
         Assert.DoesNotContain("UpstreamLoginResult", document.ToString());
     }
 

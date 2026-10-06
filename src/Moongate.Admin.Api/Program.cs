@@ -35,6 +35,7 @@ public class Program
                 await next(context);
             }
         );
+        app.UseDevelopmentSwagger();
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapMoongateAdmin();

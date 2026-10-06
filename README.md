@@ -4,9 +4,9 @@
 
 Administration application for [Moongate](https://github.com/moongate-community/moongate).
 
-The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. The frontend remains a later stage.
+The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. The REST API uses JWT Bearer authentication. Swagger UI is available at `/swagger` in Development. The frontend remains a later stage.
 
-Start the backend with `dotnet run --project src/Moongate.Admin.Api`. See [backend setup and REST operations](docs/backend.md) for HTTPS, endpoint configuration, session/CSRF flows, and verification.
+Start the backend with `dotnet run --project src/Moongate.Admin.Api`. See [backend setup and REST operations](docs/backend.md) for HTTPS, endpoint configuration, JWT Bearer flows, and verification.
 
 ## Connection model
 

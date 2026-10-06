@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
 using Moongate.Admin.Tests.TestSupport.Authentication;
 using Moongate.Admin.Tests.TestSupport.Grpc;
 using Moongate.Admin.Tests.TestSupport.Hosting;
@@ -17,10 +19,10 @@ public class AdministrationFlowTests
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
         var client = AuthenticatedApiClient.Create(factory);
-        await AuthenticatedApiClient.RefreshCsrfAsync(client);
         var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = marker });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        await AuthenticatedApiClient.RefreshCsrfAsync(client);
+        var loginBody = await login.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginBody.GetProperty("accessToken").GetString());
         foreach (var route in new[] { "/api/auth/session", "/api/servers", "/api/servers/login", "/api/accounts" })
         {
             var response = await client.GetAsync(route);
@@ -45,11 +47,11 @@ public class AdministrationFlowTests
     }
 
     [Fact]
-    public async Task Api_PlainHttp_RejectsBeforeIssuingCsrf()
+    public async Task Api_PlainHttp_RejectsBearerOperations()
     {
         await using var factory = new AdminApiFactory();
         var client = factory.CreateClient();
-        var response = await client.GetAsync("/api/auth/csrf");
+        var response = await client.GetAsync("/api/auth/session");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.False(response.Headers.Contains("Set-Cookie"));
     }

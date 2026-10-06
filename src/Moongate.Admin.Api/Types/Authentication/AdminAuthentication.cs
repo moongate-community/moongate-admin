@@ -2,12 +2,9 @@ namespace Moongate.Admin.Api.Types.Authentication;
 
 public static class AdminAuthentication
 {
-    public const string Scheme = "MoongateAdmin";
-    public const string SignInScheme = "MoongateAdmin.SignIn";
-    public const string Cookie = "__Host-MoongateAdmin";
-    public const string CsrfCookie = "__Host-MoongateAdmin.Csrf";
-    public const string CsrfHeader = "X-CSRF-TOKEN";
+    public const string Scheme = "Bearer";
     public const string AccountPolicy = "AdminAccounts";
-    public const string TokenName = "moongate_access_token";
-    public const string AccountProperty = "moongate_account";
+    public const string Issuer = "moongate-admin";
+    public const string Audience = "moongate-admin-api";
+    public const string SessionItem = "MoongateAdmin.Session";
 }

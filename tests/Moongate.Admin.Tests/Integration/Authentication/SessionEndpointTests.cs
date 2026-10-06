@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
 using Grpc.Core;
 using Microsoft.Extensions.Time.Testing;
 using Moongate.Admin.Tests.TestSupport.Authentication;
@@ -14,7 +16,7 @@ public class SessionEndpointTests
     [InlineData("/api/auth/session")]
     [InlineData("/api/servers")]
     [InlineData("/api/servers/login")]
-    public async Task Read_RevokedToken_ReturnsUnauthorizedAndClearsCookie(string path)
+    public async Task Read_RevokedToken_ReturnsUnauthorizedAndInvalidatesJwt(string path)
     {
         await using var grpc = await AdminGrpcFixture.StartAsync();
         await using var factory = new AdminApiFactory();
@@ -24,7 +26,7 @@ public class SessionEndpointTests
         grpc.Authority.RevokeIssuedToken();
         var response = await client.GetAsync(path);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Contains(response.Headers.GetValues("Set-Cookie"), value => value.StartsWith("__Host-MoongateAdmin=;"));
+
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
     }
 
@@ -56,45 +58,45 @@ public class SessionEndpointTests
     }
 
     [Fact]
-    public async Task Read_CookieFromAnotherInstance_ReturnsUnauthorized()
+    public async Task Read_JwtFromAnotherInstance_ReturnsUnauthorized()
     {
         await using var grpc = await AdminGrpcFixture.StartAsync();
         await using var first = new AdminApiFactory();
         first.UseGrpc(grpc);
-        var client = AuthenticatedApiClient.Create(first);
-        await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
-        var cookie = login.Headers.GetValues("Set-Cookie")
-            .Single(value => value.StartsWith("__Host-MoongateAdmin="))
-            .Split(';')[0];
+        var client = await AuthenticatedApiClient.CreateAsync(first);
         await using var second = new AdminApiFactory();
         second.UseGrpc(grpc);
         var other = AuthenticatedApiClient.Create(second);
-        other.DefaultRequestHeaders.Add("Cookie", cookie);
+        other.DefaultRequestHeaders.Authorization = client.DefaultRequestHeaders.Authorization;
         Assert.Equal(HttpStatusCode.Unauthorized, (await other.GetAsync("/api/auth/session")).StatusCode);
     }
-
     [Fact]
-    public async Task Login_Replacement_InvalidatesPreviousCookie()
+    public async Task Login_Replacement_InvalidatesPreviousJwt()
     {
         await using var grpc = await AdminGrpcFixture.StartAsync();
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
-        var client = AuthenticatedApiClient.Create(factory);
-        await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        var first = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
-        var oldCookie = first.Headers.GetValues("Set-Cookie")
-            .Single(value => value.StartsWith("__Host-MoongateAdmin="))
-            .Split(';')[0];
-        await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        Assert.Equal(
-            HttpStatusCode.OK,
-            (await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" }))
-            .StatusCode
-        );
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        var previous = client.DefaultRequestHeaders.Authorization;
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
+        var body = await login.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", body.GetProperty("accessToken").GetString());
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/auth/session")).StatusCode);
-        var oldClient = AuthenticatedApiClient.Create(factory);
-        oldClient.DefaultRequestHeaders.Add("Cookie", oldCookie);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await oldClient.GetAsync("/api/auth/session")).StatusCode);
+        var old = AuthenticatedApiClient.Create(factory);
+        old.DefaultRequestHeaders.Authorization = previous;
+        Assert.Equal(HttpStatusCode.Unauthorized, (await old.GetAsync("/api/auth/session")).StatusCode);
+    }
+    [Fact]
+    public async Task Read_TamperedJwt_ReturnsUnauthorized()
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync();
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        var token = client.DefaultRequestHeaders.Authorization?.Parameter ?? throw new InvalidOperationException("Missing JWT.");
+        var parts = token.Split('.');
+        parts[1] = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{\"sub\":\"7\",\"role\":\"administrator\"}")).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", string.Join('.', parts));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/session")).StatusCode);
     }
 }

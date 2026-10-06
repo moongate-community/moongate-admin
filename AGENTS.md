@@ -11,7 +11,7 @@ The .NET 10 backend and its tests are implemented. Frontend application code is 
 - Keep the architecture simple: frontend, REST host, and a focused gRPC adapter.
 - Use .NET 10 for the REST API.
 - Use published Moongate administration contracts; do not reference another local checkout from project files.
-- Route browser calls through the REST backend. Keep upstream access tokens in backend memory.
+- Route browser calls through the REST backend using JWT Bearer. Keep upstream gRPC tokens in backend memory and out of REST JWT claims.
 - Preserve upstream authorization, account pagination, token expiration, and server role restrictions.
 - Do not connect directly to Moongate's PostgreSQL or Redis databases.
 - Validate certificate trust and hostnames. Never add a callback that accepts every certificate.
@@ -23,7 +23,7 @@ The .NET 10 backend and its tests are implemented. Frontend application code is 
 - Use one primary C# type per file, file-scoped namespaces, explicit constructors, and block-bodied methods.
 - Match namespaces to folder paths. Put contracts in `Interfaces`, DTOs in `Data`, enums in `Types`, and implementations in `Services`.
 - Document interfaces and their members with English XML documentation.
-- Use test-driven development for application behavior. Test authorization, sessions, error mapping, and integration contracts.
+- Use test-driven development for application behavior. Test authorization, JWT sessions, error mapping, and integration contracts.
 - Keep documentation honest about which projects and commands actually exist.
 - Use English for scripts and conventional commit messages.
 - Keep plans and design specifications outside the repository, under the user's plans directory.

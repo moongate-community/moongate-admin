@@ -40,3 +40,10 @@ jobs:
       - run: dotnet test MoongateAdmin.slnx -c Release --no-build --logger trx
       - run: dotnet format MoongateAdmin.slnx --verify-no-changes --no-restore
       - run: git diff --check
+      - name: Swagger UI script smoke test
+        shell: bash
+        run: |
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Moongate.Admin.Api -c Release --no-build --no-launch-profile --urls http://127.0.0.1:17080 > /tmp/moongate-swagger.log 2>&1 &
+          task_swagger_pid=$!
+          trap 'kill "$task_swagger_pid"' EXIT
+          node tests/Browser/swagger-ui-smoke.cjs

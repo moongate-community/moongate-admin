@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication;
+
 using Microsoft.AspNetCore.Http.HttpResults;
 using Moongate.Admin.Api.Data.Accounts;
 using Moongate.Admin.Api.Interfaces.Upstream;
@@ -15,11 +15,11 @@ public static class AccountEndpointRouteBuilderExtensions
         endpoints.MapGet("/api/accounts", ListAsync).RequireAuthorization(AdminAuthentication.AccountPolicy);
         endpoints.MapPost("/api/accounts", CreateAsync)
             .RequireAuthorization(AdminAuthentication.AccountPolicy)
-            .AddEndpointFilter<CsrfValidationFilter>()
+
             .Produces<AccountSummaryResponse>(StatusCodes.Status201Created);
         endpoints.MapPost("/api/accounts/{id}/revoke-sessions", RevokeAsync)
             .RequireAuthorization(AdminAuthentication.AccountPolicy)
-            .AddEndpointFilter<CsrfValidationFilter>();
+            ;
         return endpoints;
     }
 
@@ -57,7 +57,7 @@ public static class AccountEndpointRouteBuilderExtensions
         await client.RevokeAccountSessionsAsync(id, session.AccessToken, cancellationToken);
         if (id == session.Account.AccountId)
         {
-            await context.SignOutAsync();
+            context.RequestServices.GetRequiredService<JwtSessionService>().Remove(session.SessionId);
         }
 
         return TypedResults.NoContent();

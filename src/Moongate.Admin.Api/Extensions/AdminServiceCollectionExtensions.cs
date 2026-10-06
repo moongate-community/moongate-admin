@@ -1,9 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Moongate.Admin.Api.Internal;
 using System.Text.Json.Serialization;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Moongate.Admin.Api.Data.Config;
 using Moongate.Admin.Api.Interfaces.Upstream;
@@ -26,37 +26,37 @@ public static class AdminServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<MoongateOptions>>(new MoongateOptionsValidator(environment));
         services.AddOptions<MoongateOptions>().Bind(configuration.GetSection("Moongate")).ValidateOnStart();
         services.AddSingleton(TimeProvider.System);
-        services.AddDataProtection().UseEphemeralDataProtectionProvider();
-        services.AddSingleton<MemoryTicketStore>();
+        services.AddSingleton<JwtSessionService>();
         services.AddScoped<AdminSessionAccessor>();
-        services.AddScoped<AdminCookieEvents>();
-        var authentication = services.AddAuthentication(AdminAuthentication.Scheme);
-        foreach (var scheme in new[] { AdminAuthentication.Scheme, AdminAuthentication.SignInScheme })
+        services.AddAuthentication(AdminAuthentication.Scheme).AddJwtBearer();
+        services.AddOptions<JwtBearerOptions>(AdminAuthentication.Scheme).Configure<JwtSessionService>((options, sessions) =>
         {
-            authentication.AddCookie(
-                scheme,
-                options =>
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = sessions.CreateValidationParameters();
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
                 {
-                    options.Cookie.Name = AdminAuthentication.Cookie;
-                    options.Cookie.Path = "/";
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                    options.Cookie.HttpOnly = true;
-                    options.Cookie.SameSite = SameSiteMode.Strict;
-                    options.SlidingExpiration = false;
-                    options.EventsType = typeof(AdminCookieEvents);
-                }
-            );
-            services.AddOptions<CookieAuthenticationOptions>(scheme)
-                .Configure<MemoryTicketStore, TimeProvider, IDataProtectionProvider>((options, store, clock, protection) =>
+                    var session = sessions.Find(context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value);
+                    if (session is null)
                     {
-                        options.SessionStore = store;
-                        options.TimeProvider = clock;
-                        options.TicketDataFormat =
-                            new TicketDataFormat(protection.CreateProtector("MoongateAdmin.SessionCookie", "v1"));
+                        context.Fail("Invalid administration session.");
                     }
-                );
-        }
-
+                    else
+                    {
+                        context.HttpContext.Items[AdminAuthentication.SessionItem] = session;
+                    }
+                    return Task.CompletedTask;
+                },
+                OnChallenge = context =>
+                {
+                    context.HandleResponse();
+                    context.Response.Headers.WWWAuthenticate = "Bearer";
+                    return ProblemResponses.WriteAsync(context.HttpContext, StatusCodes.Status401Unauthorized, "authentication_required");
+                },
+                OnForbidden = context => ProblemResponses.WriteAsync(context.HttpContext, StatusCodes.Status403Forbidden, "permission_denied")
+            };
+        });
         services.AddAuthorization(options =>
             {
                 options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
@@ -64,14 +64,6 @@ public static class AdminServiceCollectionExtensions
                     AdminAuthentication.AccountPolicy,
                     policy => policy.RequireAuthenticatedUser().RequireRole("administrator")
                 );
-            }
-        );
-        services.AddAntiforgery(options =>
-            {
-                options.HeaderName = AdminAuthentication.CsrfHeader;
-                options.Cookie.Name = AdminAuthentication.CsrfCookie;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                options.Cookie.SameSite = SameSiteMode.Strict;
             }
         );
         services.AddProblemDetails();

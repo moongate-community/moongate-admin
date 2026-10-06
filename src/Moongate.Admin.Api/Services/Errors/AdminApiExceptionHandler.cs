@@ -1,5 +1,7 @@
 using Grpc.Core;
-using Microsoft.AspNetCore.Authentication;
+using Moongate.Admin.Api.Data.Internal.Sessions;
+using Moongate.Admin.Api.Services.Authentication;
+using Moongate.Admin.Api.Types.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
 using Moongate.Admin.Api.Internal;
 using Serilog;
@@ -40,7 +42,10 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
         if ((status == 401 && context.User.Identity?.IsAuthenticated == true) ||
             context.Items.ContainsKey("LocalSessionCleared"))
         {
-            await context.SignOutAsync();
+            if (context.Items[AdminAuthentication.SessionItem] is AdminSession session)
+            {
+                context.RequestServices.GetRequiredService<JwtSessionService>().Remove(session.SessionId);
+            }
         }
 
         var code = exception is UpstreamCallException upstream
