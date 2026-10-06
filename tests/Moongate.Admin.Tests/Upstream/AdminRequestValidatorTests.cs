@@ -20,27 +20,36 @@ public class AdminRequestValidatorTests
     {
         Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateCredentials(user, password));
     }
+
     [Fact]
     public void ValidateCredentials_MultibytePassword_EnforcesByteLimit()
     {
         AdminRequestValidator.ValidateCredentials("Admin", new string('é', 512));
-        Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateCredentials("Admin", new string('é', 513)));
-        Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateCredentials(new string('a', 256), "valid"));
+        Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateCredentials("Admin", new string('é', 513))
+        );
+        Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateCredentials(new string('a', 256), "valid")
+        );
     }
+
     [Fact]
     public void ValidateCredentials_PaddedCaseDistinctNames_AcceptsOriginal()
     {
         AdminRequestValidator.ValidateCredentials(" Admin ", " valid ");
         AdminRequestValidator.ValidateCredentials("admin", "valid");
     }
+
     [Fact]
     public void ValidateAccountCreation_UndefinedRole_Rejects()
     {
-        Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateAccountCreation(new CreateAccountRequest
-        {
-            Username = "admin", Password = "valid", AccountType = (AdminAccountType)99
-        }));
+        Assert.Throws<BadHttpRequestException>(() => AdminRequestValidator.ValidateAccountCreation(
+                new CreateAccountRequest
+                {
+                    Username = "admin", Password = "valid", AccountType = (AdminAccountType)99
+                }
+            )
+        );
     }
+
     [Fact]
     public void ValidatePagination_Limits_RejectsOverflow()
     {

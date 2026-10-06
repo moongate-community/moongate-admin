@@ -25,17 +25,22 @@ public sealed class MoongateOptionsValidator : IValidateOptions<MoongateOptions>
             {
                 return ValidateOptionsResult.Fail("Invalid Moongate endpoint configuration.");
             }
+
             if (uri.Scheme != Uri.UriSchemeHttps &&
                 !(uri.Scheme == Uri.UriSchemeHttp && _environment.IsDevelopment() && options.AllowInsecureLoopback &&
                   IPAddress.TryParse(uri.Host.Trim('[', ']'), out var address) && IPAddress.IsLoopback(address)))
             {
-                return ValidateOptionsResult.Fail("Moongate endpoints require HTTPS; Development may explicitly allow literal loopback HTTP.");
+                return ValidateOptionsResult.Fail(
+                    "Moongate endpoints require HTTPS; Development may explicitly allow literal loopback HTTP."
+                );
             }
         }
+
         if (ids.Count == 0 || !ids.Contains(options.AuthenticationEndpointId))
         {
             return ValidateOptionsResult.Fail("A configured Moongate authentication endpoint is required.");
         }
+
         return ValidateOptionsResult.Success;
     }
 }

@@ -33,9 +33,11 @@ public sealed class FakeAdminAuthority
         return new AccountSummary
         {
             AccountId = id, Username = username, AccountType = Role,
-            CanAccessApi = true, IsLocked = false, CreatedAt = Timestamp.FromDateTimeOffset(DateTimeOffset.Parse("2026-01-01T00:00:00Z"))
+            CanAccessApi = true, IsLocked = false,
+            CreatedAt = Timestamp.FromDateTimeOffset(DateTimeOffset.Parse("2026-01-01T00:00:00Z"))
         };
     }
+
     public void Check(ServerCallContext context, bool administrator = false)
     {
         LastAuthorization = context.RequestHeaders.GetValue("authorization");
@@ -44,15 +46,19 @@ public sealed class FakeAdminAuthority
         {
             throw new RpcException(new Status(failure, "upstream-private-detail"));
         }
-        if (Revoked || LastAuthorization is null || !_tokens.Contains(LastAuthorization.Replace("Bearer ", "", StringComparison.Ordinal)))
+
+        if (Revoked || LastAuthorization is null ||
+            !_tokens.Contains(LastAuthorization.Replace("Bearer ", "", StringComparison.Ordinal)))
         {
             throw new RpcException(new Status(StatusCode.Unauthenticated, "revoked"));
         }
+
         if (administrator && Role != AccountType.Administrator)
         {
             throw new RpcException(new Status(StatusCode.PermissionDenied, "denied"));
         }
     }
+
     public string IssueToken()
     {
         Token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
@@ -60,6 +66,7 @@ public sealed class FakeAdminAuthority
         Revoked = false;
         return Token;
     }
+
     public void RemoveToken(string? token)
     {
         if (token is not null)
@@ -71,6 +78,7 @@ public sealed class FakeAdminAuthority
             }
         }
     }
+
     public void RevokeIssuedToken()
     {
         Revoked = true;

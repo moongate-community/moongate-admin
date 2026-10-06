@@ -1,5 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using Grpc.Core;
 using Moongate.Admin.Tests.TestSupport.Authentication;
@@ -18,7 +18,10 @@ public class AuthEndpointTests
         factory.UseGrpc(grpc);
         var client = AuthenticatedApiClient.Create(factory);
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        var response = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { username = "Admin", password = "fixture-only" }
+        );
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var text = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain(grpc.Authority.Token, text);
@@ -30,6 +33,7 @@ public class AuthEndpointTests
         Assert.DoesNotContain(grpc.Authority.Token, cookie);
         Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
     }
+
     [Fact]
     public async Task Login_MissingCsrf_FailsBeforeUpstream()
     {
@@ -37,10 +41,14 @@ public class AuthEndpointTests
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
         var client = AuthenticatedApiClient.Create(factory);
-        var response = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { username = "Admin", password = "fixture-only" }
+        );
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(0, grpc.Authority.LoginCallCount);
     }
+
     [Fact]
     public async Task Logout_UpstreamUnavailable_ClearsLocalSession()
     {
@@ -53,8 +61,9 @@ public class AuthEndpointTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(body.GetProperty("localSessionCleared").GetBoolean());
-        Assert.Contains(response.Headers.GetValues("Set-Cookie"), value => value.StartsWith("__Host-MoongateAdmin=;") );
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"), value => value.StartsWith("__Host-MoongateAdmin=;"));
     }
+
     [Fact]
     public async Task Logout_WithoutSession_IsIdempotent()
     {
@@ -63,6 +72,7 @@ public class AuthEndpointTests
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/logout", null)).StatusCode);
     }
+
     [Fact]
     public async Task Login_PreviousIdentityCsrf_IsRejected()
     {
@@ -71,7 +81,11 @@ public class AuthEndpointTests
         factory.UseGrpc(grpc);
         var client = AuthenticatedApiClient.Create(factory);
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" })).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" }))
+            .StatusCode
+        );
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/api/auth/logout", null)).StatusCode);
         Assert.False(grpc.Authority.Revoked);
     }
@@ -90,13 +104,20 @@ public class AuthEndpointTests
         {
             grpc.Authority.Failure = StatusCode.Unauthenticated;
         }
+
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
         var client = AuthenticatedApiClient.Create(factory);
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        var response = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { username = "Admin", password = "fixture-only" }
+        );
         Assert.Equal(expected, response.StatusCode);
-        Assert.False(response.Headers.TryGetValues("Set-Cookie", out var values) && values.Any(value => value.StartsWith("__Host-MoongateAdmin=")));
+        Assert.False(
+            response.Headers.TryGetValues("Set-Cookie", out var values) &&
+            values.Any(value => value.StartsWith("__Host-MoongateAdmin="))
+        );
         Assert.DoesNotContain("upstream-private-detail", await response.Content.ReadAsStringAsync());
     }
 }

@@ -1,5 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using Moongate.Admin.Contracts.V1;
 using Moongate.Admin.Tests.TestSupport.Authentication;
@@ -16,21 +16,28 @@ public class ServerEndpointTests
     [InlineData(AccountType.Administrator, ServerMode.Standalone, "standalone")]
     public async Task Reads_ValidRole_ReturnsConfiguredServer(AccountType role, ServerMode mode, string expectedMode)
     {
-        await using var grpc = await AdminGrpcFixture.StartAsync();
-        grpc.Authority.Role = role;
-        grpc.Authority.Mode = mode;
+        await using var grpc = await AdminGrpcFixture.StartAsync(new FakeAdminAuthority { Role = role });
+        await using var selected = await AdminGrpcFixture.StartAsync(
+            grpc.Authority,
+            mode: mode,
+            instanceId: "fixture-selected"
+        );
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
+        factory.Settings["Moongate:Endpoints:1:Id"] = "selected";
+        factory.Settings["Moongate:Endpoints:1:Label"] = "Selected";
+        factory.Settings["Moongate:Endpoints:1:Address"] = selected.Address;
         var client = await AuthenticatedApiClient.CreateAsync(factory);
         var list = await client.GetFromJsonAsync<JsonElement>("/api/servers");
         Assert.Equal("login", list[0].GetProperty("id").GetString());
         Assert.False(list[0].TryGetProperty("address", out _));
-        var server = await client.GetFromJsonAsync<JsonElement>("/api/servers/login");
-        Assert.Equal("fixture-login", server.GetProperty("instanceId").GetString());
+        var server = await client.GetFromJsonAsync<JsonElement>("/api/servers/selected");
+        Assert.Equal("fixture-selected", server.GetProperty("instanceId").GetString());
         Assert.Equal(expectedMode, server.GetProperty("mode").GetString());
         Assert.Equal("18446744073709551615", server.GetProperty("uptimeSeconds").GetString());
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/servers/missing")).StatusCode);
     }
+
     [Theory]
     [InlineData("/api/auth/session")]
     [InlineData("/api/servers")]

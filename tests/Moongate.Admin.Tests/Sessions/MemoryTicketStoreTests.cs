@@ -12,8 +12,11 @@ public class MemoryTicketStoreTests
     {
         var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
         using var store = new MemoryTicketStore(clock);
-        var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim("name", "Admin")], "test")),
-            new AuthenticationProperties { ExpiresUtc = clock.GetUtcNow().AddMinutes(30) }, "test");
+        var ticket = new AuthenticationTicket(
+            new ClaimsPrincipal(new ClaimsIdentity([new Claim("name", "Admin")], "test")),
+            new AuthenticationProperties { ExpiresUtc = clock.GetUtcNow().AddMinutes(30) },
+            "test"
+        );
         var key = await store.StoreAsync(ticket);
         Assert.NotEqual("stub", key);
         var retrieved = await store.RetrieveAsync(key);
@@ -26,15 +29,20 @@ public class MemoryTicketStoreTests
         await store.RenewAsync(key, ticket);
         Assert.Null(await store.RetrieveAsync(key));
     }
+
     [Fact]
     public async Task RemoveAsync_Ticket_CannotBeRenewed()
     {
         var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
         using var store = new MemoryTicketStore(clock);
-        var ticket = new AuthenticationTicket(new ClaimsPrincipal(), new AuthenticationProperties
-        {
-            ExpiresUtc = clock.GetUtcNow().AddMinutes(30)
-        }, "test");
+        var ticket = new AuthenticationTicket(
+            new ClaimsPrincipal(),
+            new AuthenticationProperties
+            {
+                ExpiresUtc = clock.GetUtcNow().AddMinutes(30)
+            },
+            "test"
+        );
         var key = await store.StoreAsync(ticket);
         await store.RemoveAsync(key);
         await store.RenewAsync(key, ticket);

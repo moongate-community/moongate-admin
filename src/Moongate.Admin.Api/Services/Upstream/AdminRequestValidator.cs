@@ -8,14 +8,17 @@ public static class AdminRequestValidator
     private const int MaximumUsernameLength = 255;
     private const int MaximumPasswordBytes = 1024;
     private const uint MaximumPageSize = 200;
+
     public static void ValidateCredentials(string? username, string? password)
     {
         if (string.IsNullOrWhiteSpace(username) || username.Length > MaximumUsernameLength || username.Contains('\0') ||
-            string.IsNullOrWhiteSpace(password) || password.Contains('\0') || Encoding.UTF8.GetByteCount(password) > MaximumPasswordBytes)
+            string.IsNullOrWhiteSpace(password) || password.Contains('\0') ||
+            Encoding.UTF8.GetByteCount(password) > MaximumPasswordBytes)
         {
             throw new BadHttpRequestException("Invalid account credentials format.");
         }
     }
+
     public static void ValidateAccountCreation(CreateAccountRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -25,6 +28,7 @@ public static class AdminRequestValidator
             throw new BadHttpRequestException("Invalid account type.");
         }
     }
+
     public static void ValidatePagination(uint pageSize)
     {
         if (pageSize > MaximumPageSize)
@@ -32,6 +36,7 @@ public static class AdminRequestValidator
             throw new BadHttpRequestException("Page size cannot exceed 200.");
         }
     }
+
     public static void ValidateAccountId(uint accountId)
     {
         if (accountId == 0)

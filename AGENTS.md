@@ -4,7 +4,7 @@
 
 Keep the REST backend and administration frontend in this repository. Moongate itself lives in a separate repository and exposes the `moongate.admin.v1` gRPC interface.
 
-The repository currently contains initialization files and copied branding assets only. The backend and frontend layout in `README.md` is proposed, not implemented.
+The .NET 10 backend and its tests are implemented. Frontend application code is deferred; `frontend/public` currently holds copied branding icons. See `docs/backend.md` for implemented behavior and operating instructions.
 
 ## Architecture
 

@@ -7,10 +7,12 @@ namespace Moongate.Admin.Tests.TestSupport.Grpc;
 public sealed class FakeAdminAccountSessionsService : AdminAccountSessions.AdminAccountSessionsBase
 {
     private readonly FakeAdminAuthority _authority;
+
     public FakeAdminAccountSessionsService(FakeAdminAuthority authority)
     {
         _authority = authority;
     }
+
     public override Task<Empty> RevokeAccountSessions(RevokeAccountSessionsRequest request, ServerCallContext context)
     {
         _authority.Check(context, true);
@@ -19,10 +21,12 @@ public sealed class FakeAdminAccountSessionsService : AdminAccountSessions.Admin
         {
             throw new RpcException(new Status(StatusCode.NotFound, "missing"));
         }
+
         if (request.AccountId == 7)
         {
             _authority.Revoked = true;
         }
+
         return Task.FromResult(new Empty());
     }
 }

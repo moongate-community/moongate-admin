@@ -1,5 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
+using System.Net;
 using Grpc.Core;
 using Microsoft.Extensions.Time.Testing;
 using Moongate.Admin.Tests.TestSupport.Authentication;
@@ -27,6 +27,7 @@ public class SessionEndpointTests
         Assert.Contains(response.Headers.GetValues("Set-Cookie"), value => value.StartsWith("__Host-MoongateAdmin=;"));
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
     }
+
     [Fact]
     public async Task Read_Outage_PreservesSessionForRecovery()
     {
@@ -39,6 +40,7 @@ public class SessionEndpointTests
         grpc.Authority.Failure = null;
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/auth/session")).StatusCode);
     }
+
     [Fact]
     public async Task Read_AtAbsoluteExpiry_ReturnsUnauthorized()
     {
@@ -52,6 +54,7 @@ public class SessionEndpointTests
         clock.Advance(TimeSpan.FromMinutes(30));
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/session")).StatusCode);
     }
+
     [Fact]
     public async Task Read_CookieFromAnotherInstance_ReturnsUnauthorized()
     {
@@ -61,7 +64,9 @@ public class SessionEndpointTests
         var client = AuthenticatedApiClient.Create(first);
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
         var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
-        var cookie = login.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("__Host-MoongateAdmin=")).Split(';')[0];
+        var cookie = login.Headers.GetValues("Set-Cookie")
+            .Single(value => value.StartsWith("__Host-MoongateAdmin="))
+            .Split(';')[0];
         await using var second = new AdminApiFactory();
         second.UseGrpc(grpc);
         var other = AuthenticatedApiClient.Create(second);
@@ -78,9 +83,15 @@ public class SessionEndpointTests
         var client = AuthenticatedApiClient.Create(factory);
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
         var first = await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" });
-        var oldCookie = first.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("__Host-MoongateAdmin=")).Split(';')[0];
+        var oldCookie = first.Headers.GetValues("Set-Cookie")
+            .Single(value => value.StartsWith("__Host-MoongateAdmin="))
+            .Split(';')[0];
         await AuthenticatedApiClient.RefreshCsrfAsync(client);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" })).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.PostAsJsonAsync("/api/auth/login", new { username = "Admin", password = "fixture-only" }))
+            .StatusCode
+        );
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/auth/session")).StatusCode);
         var oldClient = AuthenticatedApiClient.Create(factory);
         oldClient.DefaultRequestHeaders.Add("Cookie", oldCookie);

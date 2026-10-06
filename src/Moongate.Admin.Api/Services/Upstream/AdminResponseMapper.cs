@@ -17,6 +17,7 @@ public static class AdminResponseMapper
         {
             throw new UpstreamCallException(StatusCode.Internal);
         }
+
         return new AccountSummaryResponse
         {
             AccountId = account.AccountId, Username = account.Username,
@@ -31,6 +32,7 @@ public static class AdminResponseMapper
             CreatedAt = ToDate(account.CreatedAt)
         };
     }
+
     public static ServerInfoResponse ToServer(Wire.GetServerInfoResponse server)
     {
         return new ServerInfoResponse
@@ -46,6 +48,7 @@ public static class AdminResponseMapper
             UptimeSeconds = server.UptimeSeconds.ToString(CultureInfo.InvariantCulture)
         };
     }
+
     public static DateTimeOffset ToDate(Google.Protobuf.WellKnownTypes.Timestamp timestamp)
     {
         try

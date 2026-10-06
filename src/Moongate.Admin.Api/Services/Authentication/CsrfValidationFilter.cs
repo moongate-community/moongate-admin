@@ -8,12 +8,14 @@ public sealed class CsrfValidationFilter : IEndpointFilter
     {
         try
         {
-            await context.HttpContext.RequestServices.GetRequiredService<IAntiforgery>().ValidateRequestAsync(context.HttpContext);
+            await context.HttpContext.RequestServices.GetRequiredService<IAntiforgery>()
+                .ValidateRequestAsync(context.HttpContext);
         }
         catch (AntiforgeryValidationException)
         {
             throw new BadHttpRequestException("Invalid antiforgery token.");
         }
+
         return await next(context);
     }
 }

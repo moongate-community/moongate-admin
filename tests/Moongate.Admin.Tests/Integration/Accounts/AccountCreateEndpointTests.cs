@@ -1,7 +1,7 @@
-using System.Net;
 using System.Net.Http.Json;
-using System.Text;
+using System.Net;
 using System.Text.Json;
+using System.Text;
 using Grpc.Core;
 using Moongate.Admin.Tests.TestSupport.Authentication;
 using Moongate.Admin.Tests.TestSupport.Grpc;
@@ -27,6 +27,7 @@ public class AccountCreateEndpointTests
         Assert.Equal(" New ", grpc.Authority.LastCreate?.Username);
         Assert.False(grpc.Authority.LastCreate?.HasAccountType);
     }
+
     [Theory]
     [InlineData("{\"username\":\"New\",\"password\":\"fixture-only\",\"accountType\":2}")]
     [InlineData("{\"username\":\"New\",\"password\":\"fixture-only\",\"accountType\":\"unknown\"}")]
@@ -42,6 +43,7 @@ public class AccountCreateEndpointTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(0, grpc.Authority.CreateCallCount);
     }
+
     [Fact]
     public async Task Create_ResponseLost_ReportsUncertaintyWithoutRetry()
     {
@@ -50,7 +52,10 @@ public class AccountCreateEndpointTests
         factory.UseGrpc(grpc);
         var client = await AuthenticatedApiClient.CreateAsync(factory);
         grpc.Authority.LoseCreateResponse = true;
-        var response = await client.PostAsJsonAsync("/api/accounts", new { username = "CreatedOnce", password = "fixture-only" });
+        var response = await client.PostAsJsonAsync(
+            "/api/accounts",
+            new { username = "CreatedOnce", password = "fixture-only" }
+        );
         Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(body.GetProperty("mutationOutcomeUnknown").GetBoolean());
@@ -59,11 +64,14 @@ public class AccountCreateEndpointTests
         var list = await client.GetFromJsonAsync<JsonElement>("/api/accounts");
         Assert.Equal("CreatedOnce", list.GetProperty("accounts")[0].GetProperty("username").GetString());
     }
+
     [Theory]
     [InlineData(StatusCode.AlreadyExists, HttpStatusCode.Conflict, false)]
     [InlineData(StatusCode.Unavailable, HttpStatusCode.ServiceUnavailable, true)]
     [InlineData(StatusCode.PermissionDenied, HttpStatusCode.Forbidden, false)]
-    public async Task Create_UpstreamFailure_MapsStatusAndUncertainty(StatusCode failure, HttpStatusCode expected, bool uncertain)
+    public async Task Create_UpstreamFailure_MapsStatusAndUncertainty(
+        StatusCode failure, HttpStatusCode expected, bool uncertain
+    )
     {
         await using var grpc = await AdminGrpcFixture.StartAsync();
         await using var factory = new AdminApiFactory();
@@ -87,7 +95,10 @@ public class AccountCreateEndpointTests
         await using var factory = new AdminApiFactory();
         factory.UseGrpc(grpc);
         var client = await AuthenticatedApiClient.CreateAsync(factory);
-        var response = await client.PostAsJsonAsync("/api/accounts", new { username = "New", password = "fixture-only", accountType = role, canAccessApi = true });
+        var response = await client.PostAsJsonAsync(
+            "/api/accounts",
+            new { username = "New", password = "fixture-only", accountType = role, canAccessApi = true }
+        );
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(role, body.GetProperty("accountType").GetString());

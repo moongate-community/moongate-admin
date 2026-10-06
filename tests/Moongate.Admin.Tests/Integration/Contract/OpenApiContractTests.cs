@@ -1,0 +1,79 @@
+using System.Net.Http.Json;
+using System.Net;
+using System.Text.Json;
+using Moongate.Admin.Tests.TestSupport.Authentication;
+using Moongate.Admin.Tests.TestSupport.Hosting;
+
+namespace Moongate.Admin.Tests.Integration.Contract;
+
+public class OpenApiContractTests
+{
+    [Fact]
+    public async Task OpenApi_Development_DescribesPublicRestContract()
+    {
+        await using var factory = new AdminApiFactory();
+        var response = await AuthenticatedApiClient.Create(factory).GetAsync("/openapi/v1.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var paths = document.GetProperty("paths");
+        Assert.True(paths.TryGetProperty("/health/live", out _));
+        foreach (var path in new[]
+                 {
+                     "/api/auth/csrf", "/api/auth/login", "/api/auth/logout", "/api/auth/session", "/api/servers",
+                     "/api/servers/{id}", "/api/accounts", "/api/accounts/{id}/revoke-sessions"
+                 })
+        {
+            Assert.True(paths.TryGetProperty(path, out _), path);
+        }
+
+        var create = paths.GetProperty("/api/accounts").GetProperty("post");
+        Assert.True(create.GetProperty("responses").TryGetProperty("201", out _));
+        var revoke = paths.GetProperty("/api/accounts/{id}/revoke-sessions").GetProperty("post");
+        Assert.True(revoke.GetProperty("responses").TryGetProperty("204", out _));
+        Assert.Contains(
+            create.GetProperty("parameters").EnumerateArray(),
+            parameter => parameter.GetProperty("name").GetString() == "X-CSRF-TOKEN" &&
+                         parameter.GetProperty("required").GetBoolean()
+        );
+        var security = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("AdminSession");
+        Assert.Equal("cookie", security.GetProperty("in").GetString());
+        Assert.Equal("__Host-MoongateAdmin", security.GetProperty("name").GetString());
+        var schemas = document.GetProperty("components").GetProperty("schemas");
+        Assert.Equal(
+            "integer",
+            schemas.GetProperty("AccountSummaryResponse")
+                .GetProperty("properties")
+                .GetProperty("accountId")
+                .GetProperty("type")
+                .GetString()
+        );
+        Assert.Equal(
+            "string",
+            schemas.GetProperty("ServerInfoResponse")
+                .GetProperty("properties")
+                .GetProperty("uptimeSeconds")
+                .GetProperty("type")
+                .GetString()
+        );
+        var loginSchema = schemas.GetProperty("LoginRequest");
+        Assert.Equal(
+            "string",
+            loginSchema.GetProperty("properties").GetProperty("username").GetProperty("type").GetString()
+        );
+        Assert.True(loginSchema.GetProperty("properties").GetProperty("password").GetProperty("writeOnly").GetBoolean());
+        Assert.Contains(loginSchema.GetProperty("required").EnumerateArray(), field => field.GetString() == "username");
+        Assert.Contains(loginSchema.GetProperty("required").EnumerateArray(), field => field.GetString() == "password");
+        Assert.DoesNotContain("accessToken", document.ToString());
+        Assert.DoesNotContain("UpstreamLoginResult", document.ToString());
+    }
+
+    [Fact]
+    public async Task OpenApi_Production_ReturnsNotFound()
+    {
+        await using var factory = new AdminApiFactory { EnvironmentName = "Production" };
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await AuthenticatedApiClient.Create(factory).GetAsync("/openapi/v1.json")).StatusCode
+        );
+    }
+}

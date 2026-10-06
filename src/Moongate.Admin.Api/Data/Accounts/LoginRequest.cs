@@ -1,7 +1,9 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Moongate.Admin.Api.Data.Accounts;
 
 public sealed class LoginRequest
 {
-    public string? Username { get; init; }
-    public string? Password { get; init; }
+    [Required][MaxLength(255)] public string? Username { get; init; }
+    [Required] public string? Password { get; init; }
 }

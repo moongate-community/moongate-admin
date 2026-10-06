@@ -6,10 +6,12 @@ namespace Moongate.Admin.Tests.TestSupport.Grpc;
 public sealed class FakeAdminAccountsService : AdminAccounts.AdminAccountsBase
 {
     private readonly FakeAdminAuthority _authority;
+
     public FakeAdminAccountsService(FakeAdminAuthority authority)
     {
         _authority = authority;
     }
+
     public override Task<ListAccountsResponse> ListAccounts(ListAccountsRequest request, ServerCallContext context)
     {
         _authority.ListCallCount++;
@@ -19,6 +21,7 @@ public sealed class FakeAdminAccountsService : AdminAccounts.AdminAccountsBase
         response.Accounts.Add(_authority.CreatedAccount ?? _authority.Summary());
         return Task.FromResult(response);
     }
+
     public override Task<AccountSummary> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
         _authority.CreateCallCount++;
@@ -32,6 +35,7 @@ public sealed class FakeAdminAccountsService : AdminAccounts.AdminAccountsBase
         {
             throw new RpcException(new Status(StatusCode.DeadlineExceeded, "response lost after commit"));
         }
+
         return Task.FromResult(summary);
     }
 }

@@ -1,5 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Moongate.Admin.Tests.TestSupport.Hosting;

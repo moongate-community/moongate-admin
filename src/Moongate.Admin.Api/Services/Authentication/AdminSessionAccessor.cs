@@ -16,17 +16,20 @@ public sealed class AdminSessionAccessor
         {
             return null;
         }
+
         var token = result.Properties.GetTokenValue(AdminAuthentication.TokenName);
         result.Properties.Items.TryGetValue(AdminAuthentication.AccountProperty, out var accountJson);
         if (string.IsNullOrEmpty(token) || accountJson is null)
         {
             return null;
         }
+
         var account = JsonSerializer.Deserialize<AccountSummaryResponse>(accountJson);
         if (account is null)
         {
             return null;
         }
+
         return new AdminSession { Account = account, AccessToken = token, ExpiresAt = expires };
     }
 }

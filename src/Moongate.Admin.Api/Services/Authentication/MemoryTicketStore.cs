@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -17,6 +17,7 @@ public sealed class MemoryTicketStore : ITicketStore, IDisposable
     {
         _clock = clock;
     }
+
     public Task<string> StoreAsync(AuthenticationTicket ticket)
     {
         ArgumentNullException.ThrowIfNull(ticket);
@@ -25,48 +26,59 @@ public sealed class MemoryTicketStore : ITicketStore, IDisposable
         {
             throw new InvalidOperationException("Session already expired.");
         }
+
         var key = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(ReferenceBytes));
         lock (_gate)
         {
             _cache.Set(key, (TicketSerializer.Default.Serialize(ticket), expiry), expiry);
         }
+
         return Task.FromResult(key);
     }
+
     public Task<AuthenticationTicket?> RetrieveAsync(string key)
     {
         lock (_gate)
         {
-            if (_cache.TryGetValue(key, out (byte[] Bytes, DateTimeOffset Expiry) entry) && entry.Expiry > _clock.GetUtcNow())
+            if (_cache.TryGetValue(key, out (byte[] Bytes, DateTimeOffset Expiry) entry) &&
+                entry.Expiry > _clock.GetUtcNow())
             {
                 return Task.FromResult(TicketSerializer.Default.Deserialize(entry.Bytes));
             }
+
             _cache.Remove(key);
             return Task.FromResult<AuthenticationTicket?>(null);
         }
     }
+
     public Task RenewAsync(string key, AuthenticationTicket ticket)
     {
         lock (_gate)
         {
-            if (_cache.TryGetValue(key, out (byte[] Bytes, DateTimeOffset Expiry) entry) && entry.Expiry > _clock.GetUtcNow())
+            if (_cache.TryGetValue(key, out (byte[] Bytes, DateTimeOffset Expiry) entry) &&
+                entry.Expiry > _clock.GetUtcNow())
             {
                 var copy = TicketSerializer.Default.Deserialize(TicketSerializer.Default.Serialize(ticket))
-                    ?? throw new InvalidOperationException("Invalid session ticket.");
+                           ?? throw new InvalidOperationException("Invalid session ticket.");
                 var expiry = copy.Properties.ExpiresUtc is { } updated && updated < entry.Expiry ? updated : entry.Expiry;
                 copy.Properties.ExpiresUtc = expiry;
                 _cache.Set(key, (TicketSerializer.Default.Serialize(copy), expiry), expiry);
             }
         }
+
         return Task.CompletedTask;
     }
+
     public Task RemoveAsync(string key)
     {
         lock (_gate)
         {
             _cache.Remove(key);
         }
+
         return Task.CompletedTask;
     }
+
     public void Dispose()
     {
         _cache.Dispose();

@@ -24,58 +24,99 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
     {
         _clock = clock;
         _authenticationEndpoint = options.Value.AuthenticationEndpointId;
-        _channels = options.Value.Endpoints.ToDictionary(endpoint => endpoint.Id,
-            endpoint => GrpcChannel.ForAddress(endpoint.Address, new GrpcChannelOptions
-            {
-                HttpClient = clients.CreateClient("MoongateAdmin"), DisposeHttpClient = true
-            }), StringComparer.Ordinal);
+        _channels = options.Value.Endpoints.ToDictionary(
+            endpoint => endpoint.Id,
+            endpoint => GrpcChannel.ForAddress(
+                endpoint.Address,
+                new GrpcChannelOptions
+                {
+                    HttpClient = clients.CreateClient("MoongateAdmin"), DisposeHttpClient = true
+                }
+            ),
+            StringComparer.Ordinal
+        );
     }
+
     public async Task<UpstreamLoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         AdminRequestValidator.ValidateCredentials(request.Username, request.Password);
-        var response = await InvokeAsync(() => new Wire.AdminLogin.AdminLoginClient(Channel(_authenticationEndpoint)).LoginAsync(
-            new Wire.LoginRequest { Username = request.Username, Password = request.Password }, Options(null, cancellationToken)), cancellationToken);
+        var response = await InvokeAsync(
+            () => new Wire.AdminLogin.AdminLoginClient(Channel(_authenticationEndpoint)).LoginAsync(
+                new Wire.LoginRequest { Username = request.Username, Password = request.Password },
+                Options(null, cancellationToken)
+            ),
+            cancellationToken
+        );
         if (response.Account is null || response.ExpiresAt is null || string.IsNullOrWhiteSpace(response.AccessToken))
         {
             throw new UpstreamCallException(StatusCode.Internal);
         }
+
         var expiry = AdminResponseMapper.ToDate(response.ExpiresAt);
         if (expiry <= _clock.GetUtcNow())
         {
             throw new UpstreamCallException(StatusCode.Internal);
         }
+
         return new UpstreamLoginResult
         {
             Account = AdminResponseMapper.ToAccount(response.Account), AccessToken = response.AccessToken, ExpiresAt = expiry
         };
     }
+
     public async Task LogoutAsync(string accessToken, CancellationToken cancellationToken)
     {
-        await InvokeAsync(() => new Wire.AdminSession.AdminSessionClient(Channel(_authenticationEndpoint)).LogoutAsync(
-            new Empty(), Options(accessToken, cancellationToken)), cancellationToken);
+        await InvokeAsync(
+            () => new Wire.AdminSession.AdminSessionClient(Channel(_authenticationEndpoint)).LogoutAsync(
+                new Empty(),
+                Options(accessToken, cancellationToken)
+            ),
+            cancellationToken
+        );
     }
-    public async Task<ServerInfoResponse> GetServerInfoAsync(string serverId, string accessToken, CancellationToken cancellationToken)
+
+    public async Task<ServerInfoResponse> GetServerInfoAsync(
+        string serverId, string accessToken, CancellationToken cancellationToken
+    )
     {
-        var response = await InvokeAsync(() => new Wire.AdminServer.AdminServerClient(Channel(serverId)).GetServerInfoAsync(
-            new Empty(), Options(accessToken, cancellationToken)), cancellationToken);
+        var response = await InvokeAsync(
+            () => new Wire.AdminServer.AdminServerClient(Channel(serverId)).GetServerInfoAsync(
+                new Empty(),
+                Options(accessToken, cancellationToken)
+            ),
+            cancellationToken
+        );
         return AdminResponseMapper.ToServer(response);
     }
-    public async Task<AccountPageResponse> ListAccountsAsync(uint pageSize, uint afterAccountId, string accessToken, CancellationToken cancellationToken)
+
+    public async Task<AccountPageResponse> ListAccountsAsync(
+        uint pageSize, uint afterAccountId, string accessToken, CancellationToken cancellationToken
+    )
     {
         AdminRequestValidator.ValidatePagination(pageSize);
-        var response = await InvokeAsync(() => new Wire.AdminAccounts.AdminAccountsClient(Channel(_authenticationEndpoint)).ListAccountsAsync(
-            new Wire.ListAccountsRequest { PageSize = pageSize == 0 ? DefaultPageSize : pageSize, AfterAccountId = afterAccountId },
-            Options(accessToken, cancellationToken)), cancellationToken);
+        var response = await InvokeAsync(
+            () => new Wire.AdminAccounts.AdminAccountsClient(Channel(_authenticationEndpoint)).ListAccountsAsync(
+                new Wire.ListAccountsRequest
+                { PageSize = pageSize == 0 ? DefaultPageSize : pageSize, AfterAccountId = afterAccountId },
+                Options(accessToken, cancellationToken)
+            ),
+            cancellationToken
+        );
         return new AccountPageResponse
         {
-            Accounts = response.Accounts.Select(AdminResponseMapper.ToAccount).ToArray(), NextAfterAccountId = response.NextAfterAccountId
+            Accounts = response.Accounts.Select(AdminResponseMapper.ToAccount).ToArray(),
+            NextAfterAccountId = response.NextAfterAccountId
         };
     }
-    public async Task<AccountSummaryResponse> CreateAccountAsync(CreateAccountRequest request, string accessToken, CancellationToken cancellationToken)
+
+    public async Task<AccountSummaryResponse> CreateAccountAsync(
+        CreateAccountRequest request, string accessToken, CancellationToken cancellationToken
+    )
     {
         AdminRequestValidator.ValidateAccountCreation(request);
-        var wire = new Wire.CreateAccountRequest { Username = request.Username, Password = request.Password, CanAccessApi = request.CanAccessApi };
+        var wire = new Wire.CreateAccountRequest
+        { Username = request.Username, Password = request.Password, CanAccessApi = request.CanAccessApi };
         if (request.AccountType is { } role)
         {
             wire.AccountType = role switch
@@ -86,24 +127,41 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
                 _ => throw new BadHttpRequestException("Invalid account type.")
             };
         }
-        var response = await InvokeAsync(() => new Wire.AdminAccounts.AdminAccountsClient(Channel(_authenticationEndpoint)).CreateAccountAsync(
-            wire, Options(accessToken, cancellationToken)), cancellationToken, mutation: true);
+
+        var response = await InvokeAsync(
+            () => new Wire.AdminAccounts.AdminAccountsClient(Channel(_authenticationEndpoint)).CreateAccountAsync(
+                wire,
+                Options(accessToken, cancellationToken)
+            ),
+            cancellationToken,
+            mutation: true
+        );
         return AdminResponseMapper.ToAccount(response);
     }
+
     public async Task RevokeAccountSessionsAsync(uint accountId, string accessToken, CancellationToken cancellationToken)
     {
         AdminRequestValidator.ValidateAccountId(accountId);
-        await InvokeAsync(() => new Wire.AdminAccountSessions.AdminAccountSessionsClient(Channel(_authenticationEndpoint)).RevokeAccountSessionsAsync(
-            new Wire.RevokeAccountSessionsRequest { AccountId = accountId }, Options(accessToken, cancellationToken)), cancellationToken);
+        await InvokeAsync(
+            () => new Wire.AdminAccountSessions.AdminAccountSessionsClient(Channel(_authenticationEndpoint))
+                .RevokeAccountSessionsAsync(
+                    new Wire.RevokeAccountSessionsRequest { AccountId = accountId },
+                    Options(accessToken, cancellationToken)
+                ),
+            cancellationToken
+        );
     }
+
     private GrpcChannel Channel(string serverId)
     {
         if (!_channels.TryGetValue(serverId, out var channel))
         {
             throw new BadHttpRequestException("Server not found.", StatusCodes.Status404NotFound);
         }
+
         return channel;
     }
+
     private static CallOptions Options(string? token, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -112,9 +170,13 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
         {
             headers.Add("authorization", "Bearer " + token);
         }
+
         return new CallOptions(headers, DateTime.UtcNow.Add(CallDeadline), cancellationToken);
     }
-    private static async Task<T> InvokeAsync<T>(Func<AsyncUnaryCall<T>> call, CancellationToken cancellationToken, bool mutation = false)
+
+    private static async Task<T> InvokeAsync<T>(
+        Func<AsyncUnaryCall<T>> call, CancellationToken cancellationToken, bool mutation = false
+    )
     {
         try
         {
@@ -124,11 +186,15 @@ public sealed class GrpcMoongateAdminClient : IMoongateAdminClient, IDisposable
         catch (RpcException exception)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var status = exception.Status.DebugException is HttpRequestException ? StatusCode.Unavailable : exception.StatusCode;
-            var uncertain = mutation && status is StatusCode.DeadlineExceeded or StatusCode.Unavailable or StatusCode.Cancelled or StatusCode.Unknown or StatusCode.Internal;
+            var status = exception.Status.DebugException is HttpRequestException
+                ? StatusCode.Unavailable
+                : exception.StatusCode;
+            var uncertain = mutation && status is StatusCode.DeadlineExceeded or StatusCode.Unavailable
+                or StatusCode.Cancelled or StatusCode.Unknown or StatusCode.Internal;
             throw new UpstreamCallException(status, uncertain);
         }
     }
+
     public void Dispose()
     {
         foreach (var channel in _channels.Values)

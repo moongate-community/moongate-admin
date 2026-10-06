@@ -25,24 +25,38 @@ public class GrpcTlsTests
         {
             registration.ConfigurePrimaryHttpMessageHandler(certificates.TrustedHandler);
         }
+
         await using var provider = services.BuildServiceProvider();
         var uri = new UriBuilder(fixture.Address) { Host = host };
-        using var client = new GrpcMoongateAdminClient(Options.Create(new MoongateOptions
-        {
-            AuthenticationEndpointId = "login",
-            Endpoints = [new MoongateEndpointOptions { Id = "login", Label = "Login", Address = uri.Uri.ToString() }]
-        }), provider.GetRequiredService<IHttpClientFactory>(), TimeProvider.System);
+        using var client = new GrpcMoongateAdminClient(
+            Options.Create(
+                new MoongateOptions
+                {
+                    AuthenticationEndpointId = "login",
+                    Endpoints = [new MoongateEndpointOptions { Id = "login", Label = "Login", Address = uri.Uri.ToString() }]
+                }
+            ),
+            provider.GetRequiredService<IHttpClientFactory>(),
+            TimeProvider.System
+        );
         if (succeeds)
         {
-            var result = await client.LoginAsync(new LoginRequest { Username = "Admin", Password = "fixture-only" }, CancellationToken.None);
+            var result = await client.LoginAsync(
+                new LoginRequest { Username = "Admin", Password = "fixture-only" },
+                CancellationToken.None
+            );
             Assert.Equal((uint)7, result.Account.AccountId);
         }
         else
         {
-            var exception = await Assert.ThrowsAsync<UpstreamCallException>(() => client.LoginAsync(new LoginRequest
-            {
-                Username = "Admin", Password = "fixture-only"
-            }, CancellationToken.None));
+            var exception = await Assert.ThrowsAsync<UpstreamCallException>(() => client.LoginAsync(
+                    new LoginRequest
+                    {
+                        Username = "Admin", Password = "fixture-only"
+                    },
+                    CancellationToken.None
+                )
+            );
             Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
             Assert.Equal(0, fixture.Authority.LoginCallCount);
         }
