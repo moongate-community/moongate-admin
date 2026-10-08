@@ -1,3 +1,6 @@
+import { OverviewPage } from '../features/servers/OverviewPage';
+import { ServersPage } from '../features/servers/ServersPage';
+import { ConnectionsPage } from '../features/connections/ConnectionsPage';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
 import { AuthProvider, useAuth } from './AuthProvider';
 import { useResource } from './useResource';
@@ -68,13 +71,13 @@ function Entry() {
                     </ProtectedRoute>
                 }
             >
-                <Route index element={<h1 className="page-title">Overview</h1>} />
-                <Route path="servers" element={<h1 className="page-title">Servers</h1>} />
+                <Route index element={<OverviewPage />} />
+                <Route path="servers" element={<ServersPage />} />
                 <Route
                     path="connections"
                     element={
                         <ProtectedRoute administrator>
-                            <h1 className="page-title">Connections</h1>
+                            <ConnectionsPage />
                         </ProtectedRoute>
                     }
                 />

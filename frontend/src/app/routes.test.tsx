@@ -4,13 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
 import { defaults, loginResult, account } from '../test/fixtures';
-import { renderApp } from '../test/render';
-export async function signIn() {
-    await userEvent.type(await screen.findByLabelText('Username'), 'Admin');
-    await userEvent.type(screen.getByLabelText('Password'), 'fixture-password');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    await screen.findByRole('heading', { name: 'Overview' });
-}
+import { renderApp, signIn } from '../test/render';
 it('shows loading until status is known and recovers status failure', async () => {
     let finish!: () => void;
     server.use(
