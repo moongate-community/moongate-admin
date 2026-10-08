@@ -1,3 +1,4 @@
+import { AccountsPage } from '../features/accounts/AccountsPage';
 import { OverviewPage } from '../features/servers/OverviewPage';
 import { ServersPage } from '../features/servers/ServersPage';
 import { ConnectionsPage } from '../features/connections/ConnectionsPage';
@@ -85,7 +86,7 @@ function Entry() {
                     path="accounts"
                     element={
                         <ProtectedRoute administrator>
-                            <h1 className="page-title">Accounts</h1>
+                            <AccountsPage />
                         </ProtectedRoute>
                     }
                 />
