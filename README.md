@@ -4,9 +4,9 @@
 
 Administration application for [Moongate](https://github.com/moongate-community/moongate).
 
-The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. It also provides protected initial setup, persistent connection configuration and candidate connection tests. The REST API uses JWT Bearer authentication. Swagger UI is available at `/swagger` in Development. The frontend remains a later stage.
+The .NET 10 REST backend is implemented in `src/Moongate.Admin.Api`. It connects to Moongate's administration gRPC services for login/logout, server information, account listing/creation, and session revocation. It also provides protected initial setup, persistent connection configuration and candidate connection tests. The REST API uses JWT Bearer authentication. Swagger UI is available at `/swagger` in Development. The Vite/React frontend uses shadcn/ui with the Moongate dark/light brand.
 
-Start the backend with `dotnet run --project src/Moongate.Admin.Api`. A fresh process has no connections: supply the temporary setup token from Bitwarden at runtime and configure it through Swagger before login. See [backend setup and REST operations](docs/backend.md) for HTTPS, persistent configuration, JWT Bearer flows, and verification.
+Start the backend with `dotnet run --project src/Moongate.Admin.Api`. A fresh process has no connections: supply the temporary setup token from Bitwarden at runtime and configure connections through the frontend initial setup or Swagger before login. See [backend setup and REST operations](docs/backend.md) for HTTPS, persistent configuration, JWT Bearer flows, and verification.
 
 ## Connection model
 
@@ -26,15 +26,15 @@ See the upstream [administration API guide](https://github.com/moongate-communit
 4. Create accounts with an explicit role and API access setting.
 5. Revoke an account's administrative sessions.
 
-Account administration requires an Administrator account and a Login or Standalone endpoint. The frontend will reflect these permissions, and the backend and upstream service will enforce them.
+Account administration requires an Administrator account and a Login or Standalone endpoint. The frontend reflects these permissions; the backend and upstream service enforce them.
 
-Frontend implementation is deferred. Its current proposal uses React, TypeScript, and Vite, following the upstream administration guide.
+See [frontend development and deployment](docs/frontend.md) for browser setup, build/copy, certificate trust and tests.
 
 ## Layout
 
 ```text
 src/Moongate.Admin.Api/       REST host, sessions, and gRPC adapter
-frontend/public/            Copied branding icons; application deferred
+frontend/                   Vite/React/TypeScript administration UI
 tests/Moongate.Admin.Tests/  Backend unit and integration tests
 MoongateAdmin.slnx           Backend solution
 ```
@@ -52,9 +52,9 @@ Use `develop` as the integration branch, feature branches for changes, and pull 
 ## Development requirements
 
 - .NET 10 SDK.
-- Node.js 18 or newer for the optional Swagger script smoke check; npm will be needed when frontend work starts.
+- Node.js 24 (see `frontend/.nvmrc`), npm and rsync for the frontend.
 - An enabled Moongate administration endpoint for live integration.
 
 Keep credentials in the designated secret store and supply them at runtime. Do not commit credentials, access tokens, private keys, or environment files. Trust the upstream certificate chain and hostname; do not disable certificate verification.
 
-Backend implementation is tracked in [issue #3](https://github.com/moongate-community/moongate-admin/issues/3). Initialization is tracked in [issue #1](https://github.com/moongate-community/moongate-admin/issues/1).
+Frontend implementation is tracked in [issue #9](https://github.com/moongate-community/moongate-admin/issues/9). Backend implementation is tracked in [issue #3](https://github.com/moongate-community/moongate-admin/issues/3). Initialization is tracked in [issue #1](https://github.com/moongate-community/moongate-admin/issues/1).

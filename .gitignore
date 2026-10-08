@@ -619,4 +619,4 @@ website/.docs-stage-*/
 # Frontend and generated host assets
 /frontend/playwright-report/
 /frontend/test-results/
-/src/Moongate.Admin.Api/wwwroot/
+/src/Moongate.Admin.Api/wwwroot/frontend/

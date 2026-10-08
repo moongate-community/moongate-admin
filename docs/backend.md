@@ -8,7 +8,7 @@ The .NET 10 application exposes REST and calls Moongate's `moongate.admin.v1` gR
 2. Enable Moongate's administration listener and provision an API-enabled account using the upstream [administration guide](https://github.com/moongate-community/moongate/blob/develop/docs/admin-api.md).
 3. For initial setup, inject the setup token from the designated Bitwarden item at runtime. Alternatively, retain an existing valid static endpoint catalog. Install the upstream public CA certificate in the backend's system trust store when using a private CA. Both trust and hostname must match.
 4. Run `dotnet run --project src/Moongate.Admin.Api`. The Development profile listens at `https://localhost:7080`.
-5. Open `https://localhost:7080/swagger`, complete the initial setup below, and sign in. `/openapi/v1.json` describes the contract. Both documentation endpoints are Development-only.
+5. Build the UI using [frontend instructions](frontend.md) and open `https://localhost:7080/`, or use `https://localhost:7080/swagger` for the API. Complete initial setup and sign in. `/openapi/v1.json` describes the contract. Both documentation endpoints are Development-only.
 
 Use `https://localhost:7080/health/live` for process liveness; it does not test Moongate connectivity. All `/api` requests require HTTPS. The backend rejects plaintext API requests with 400 `https_required`. Liveness and Development OpenAPI can be inspected without credentials.
 
@@ -143,3 +143,7 @@ dotnet format MoongateAdmin.slnx --verify-no-changes --no-restore
 The Swagger script smoke check also uses the Node.js runtime available in CI. Tests use an in-process Moongate gRPC fixture, including TLS trust/hostname failures, revoked and expired tokens, JWT signature/issuer/audience checks, account permissions, pagination, and creation response loss. They do not require PostgreSQL, Redis, or live operator credentials.
 
 A live smoke test is optional and requires an enabled real endpoint plus runtime credentials from Bitwarden. Perform only login, server information, authorized listing, and logout. Do not automatically create or revoke live accounts during verification. Connection configuration is tracked in [issue #7](https://github.com/moongate-community/moongate-admin/issues/7). Initialization and backend development are tracked in [issue #1](https://github.com/moongate-community/moongate-admin/issues/1) and [issue #3](https://github.com/moongate-community/moongate-admin/issues/3).
+
+## Frontend hosting
+
+Run `scripts/build-frontend.sh` before `dotnet publish`. The host serves only the generated `wwwroot/frontend` application files, with an anonymous SPA entry for UI paths. Reserved `/api`, `/health`, `/swagger`, `/openapi`, missing assets and non-GET UI requests retain real 404 behavior; existing API HTTPS/authentication checks still apply. Without a built index the API remains available and UI paths return 404. Production exposes neither Swagger nor OpenAPI.

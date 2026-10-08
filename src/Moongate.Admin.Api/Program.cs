@@ -57,6 +57,8 @@ public class Program
                 await next(context);
             }
         );
+        app.UseMoongateFrontend();
+        app.UseRouting();
         app.UseDevelopmentSwagger();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -66,16 +68,6 @@ public class Program
             app.MapOpenApi().AllowAnonymous();
         }
 
-        app.MapFallback(
-                "/{**path}",
-                context =>
-                {
-                    context.Response.StatusCode = StatusCodes.Status404NotFound;
-                    return Task.CompletedTask;
-                }
-            )
-            .AllowAnonymous()
-            .ExcludeFromDescription();
         await app.RunAsync();
     }
 }
