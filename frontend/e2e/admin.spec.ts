@@ -31,6 +31,9 @@ async function fixture(page: Page, configured = true) {
         revokes: 0,
         conflict: false,
         unknown: false,
+        gateway: false,
+        reads: 0,
+        sessionChecks: 0,
         etags: [] as (string | undefined)[],
     };
     await page.route(/\/api\//, async (route) => {
@@ -49,8 +52,10 @@ async function fixture(page: Page, configured = true) {
             status = 201;
             data = { ...catalog, revision: '11111111111111111111111111111111', reauthenticationRequired: true };
         } else if (path === '/api/auth/login') data = { ...session, accessToken: 'fixture-rest-jwt', tokenType: 'Bearer' };
-        else if (path === '/api/auth/session') data = session;
-        else {
+        else if (path === '/api/auth/session') {
+            state.sessionChecks++;
+            data = session;
+        } else {
             expect(request.headers()['authorization']).toBe('Bearer fixture-rest-jwt');
             if (path === '/api/servers') data = catalog.endpoints.map(({ id, label }) => ({ id, label }));
             else if (path.startsWith('/api/servers/'))
@@ -58,6 +63,12 @@ async function fixture(page: Page, configured = true) {
             else if (path === '/api/configuration') {
                 if (request.method() === 'PUT') {
                     state.etags.push(request.headers()['if-match']);
+                    if (state.gateway)
+                        return route.fulfill({
+                            status: 502,
+                            contentType: 'text/html',
+                            body: '<html>Gateway failure</html>',
+                        });
                     status = state.conflict ? 412 : 200;
                     data = state.conflict
                         ? { code: 'configuration_changed' }
@@ -72,6 +83,12 @@ async function fixture(page: Page, configured = true) {
             } else if (path === '/api/accounts') {
                 if (request.method() === 'POST') {
                     state.creates++;
+                    if (state.gateway)
+                        return route.fulfill({
+                            status: 502,
+                            contentType: 'text/html',
+                            body: '<html>Gateway failure</html>',
+                        });
                     const body = request.postDataJSON();
                     expect(body.accountType).toBe('regular');
                     expect(body.canAccessApi).toBe(false);
@@ -79,7 +96,10 @@ async function fixture(page: Page, configured = true) {
                     data = state.unknown
                         ? { code: 'upstream_unavailable', mutationOutcomeUnknown: true }
                         : { ...player, accountId: 3, username: body.username };
-                } else data = { accounts: [player], nextAfterAccountId: 0 };
+                } else {
+                    state.reads++;
+                    data = { accounts: [player], nextAfterAccountId: 0 };
+                }
             } else if (path.endsWith('/revoke-sessions')) {
                 state.revokes++;
                 return route.fulfill({ status: 204 });
@@ -133,6 +153,7 @@ test('mobile Sheet navigation and independent server selection', async ({ page }
     await page.screenshot({ path: testInfo.outputPath('navigation-mobile.png'), fullPage: true, animations: 'disabled' });
     await page.keyboard.press('Tab');
     await page.getByRole('link', { name: 'Servers', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Servers' })).toBeVisible();
     await page.getByLabel('Selected server').selectOption('other');
     await expect(page.getByText('Other world')).toBeVisible();
     await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -179,4 +200,35 @@ test('ETag conflict, candidate401, uncertain creation and confirmed revocation',
     await page.getByRole('button', { name: 'Confirm revocation' }).click();
     await expect(page.getByText('Administrative sessions revoked for PlayerOne')).toBeVisible();
     expect(state.revokes).toBe(1);
+});
+test('gateway uncertainty survives navigation and needs a fresh list before acknowledgement', async ({ page }) => {
+    const state = await fixture(page);
+    state.gateway = true;
+    await page.goto('/login');
+    await login(page);
+    await page.getByRole('link', { name: 'Connections' }).click();
+    await page.getByLabel('Label', { exact: true }).first().fill('Gateway draft');
+    await page.getByRole('button', { name: 'Save connections' }).click();
+    await expect(page.getByText(/Check the latest configuration before trying again/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save connections' })).toBeDisabled();
+    await expect.poll(() => state.sessionChecks).toBe(2);
+    await page.getByRole('link', { name: 'Accounts' }).click();
+    await page.getByRole('button', { name: 'Create account', exact: true }).click();
+    await page.getByLabel('New username').fill('GatewayUser');
+    await page.getByLabel('New password').fill('fixture-new-password');
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect(page.getByRole('dialog').getByText(/Verify the account list before trying again/)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'I verified the account list' })).toBeDisabled();
+    expect(state.reads).toBe(1);
+    await page.getByRole('link', { name: 'Servers' }).click();
+    await expect(page.getByRole('heading', { name: 'Servers' })).toBeVisible();
+    await page.getByRole('link', { name: 'Accounts' }).click();
+    await expect(page.getByRole('cell', { name: 'PlayerOne', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'I verified the account list' })).toBeEnabled();
+    await page.getByRole('button', { name: 'I verified the account list' }).click();
+    await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeEnabled();
+    expect(state.creates).toBe(1);
+    expect(state.etags).toHaveLength(1);
 });

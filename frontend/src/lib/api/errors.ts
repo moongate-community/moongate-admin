@@ -2,6 +2,8 @@ import type { ProblemDetails } from './types';
 const messages: Record<string, string> = {
     authentication_required: 'Your session ended. Sign in again.',
     permission_denied: 'You do not have permission to perform this action.',
+    upstream_permissiondenied: 'You do not have permission to perform this action.',
+    configuration_precondition_required: 'Reload connections before saving to obtain the current revision.',
     setup_token_required: 'Enter the initial setup key.',
     configuration_invalid: 'Check the connection settings.',
     configuration_changed: 'Connections changed since you loaded them.',

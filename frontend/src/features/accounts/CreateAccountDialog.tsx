@@ -65,11 +65,7 @@ export function CreateAccountDialog({
         } catch (e) {
             if (!isAbort(e)) {
                 setError(e);
-                if (
-                    !(e instanceof ApiError) ||
-                    e.mutationOutcomeUnknown ||
-                    (e.code === 'invalid_response' && (e.status === 0 || e.status < 300))
-                ) {
+                if (!(e instanceof ApiError) || e.mutationOutcomeUnknown || e.code === 'invalid_response') {
                     setUnknown(true);
                     onUnknown(username);
                 }

@@ -56,6 +56,20 @@ public class FrontendHostingTests
     }
 
     [Fact]
+    public async Task Frontend_ReservedStaticFile_PreservesApiBoundaries()
+    {
+        using var assets = new TemporaryFrontendDirectory();
+        var apiAssets = Path.Combine(assets.Root, "frontend", "api");
+        Directory.CreateDirectory(apiAssets);
+        File.WriteAllText(Path.Combine(apiAssets, "fixture.js"), "reserved-fixture");
+        await using var factory = new AdminApiFactory();
+        await using var host = factory.WithWebHostBuilder(builder => builder.UseWebRoot(assets.Root));
+        using var client = host.CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("https://localhost/api/fixture.js")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("http://localhost/api/fixture.js")).StatusCode);
+    }
+
+    [Fact]
     public async Task Frontend_NoBuild_PreservesApiAndReturnsNotFound()
     {
         using var assets = new TemporaryFrontendDirectory(false);

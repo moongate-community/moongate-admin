@@ -175,3 +175,64 @@ it('revocation outage keeps session and does not retry', async () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('unavailable');
     expect(count).toBe(1);
 });
+it('HTML gateway response after creation requires reconciliation rather than resend', async () => {
+    await enter();
+    let count = 0;
+    server.use(
+        http.post('*/api/accounts', () => {
+            count++;
+            return new HttpResponse('<html>Gateway failure</html>', {
+                status: 502,
+                headers: { 'Content-Type': 'text/html' },
+            });
+        }),
+    );
+    await create();
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await within(screen.getByRole('dialog')).findByText(/Verify the account list before trying again/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+    expect(count).toBe(1);
+});
+it('closing unknown creation cannot acknowledge an unrefreshed account list', async () => {
+    await enter();
+    let reads = 0;
+    server.use(
+        http.get('*/api/accounts', () => {
+            reads++;
+            return HttpResponse.json({ accounts: [player], nextAfterAccountId: 0 });
+        }),
+        http.post('*/api/accounts', () =>
+            HttpResponse.json({ code: 'upstream_unavailable', mutationOutcomeUnknown: true }, { status: 503 }),
+        ),
+    );
+    await create();
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await within(screen.getByRole('dialog')).findByText(/Verify the account list before trying again/);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'I verified the account list' })).toBeDisabled();
+    expect(reads).toBe(0);
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh accounts' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'I verified the account list' })).toBeEnabled());
+    expect(reads).toBe(1);
+    await userEvent.click(screen.getByRole('button', { name: 'I verified the account list' }));
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
+});
+it('unknown creation remains locked across protected route remounts', async () => {
+    await enter();
+    server.use(
+        http.post('*/api/accounts', () =>
+            HttpResponse.json({ code: 'upstream_unavailable', mutationOutcomeUnknown: true }, { status: 503 }),
+        ),
+    );
+    await create();
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await within(screen.getByRole('dialog')).findByText(/Verify the account list before trying again/);
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(screen.getByRole('link', { name: 'Servers' }));
+    await screen.findByRole('heading', { name: 'Servers' });
+    await userEvent.click(screen.getByRole('link', { name: 'Accounts' }));
+    await screen.findByRole('cell', { name: 'PlayerOne' });
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+    expect(screen.getByText(/Username:/)).toHaveTextContent('NewUser');
+});

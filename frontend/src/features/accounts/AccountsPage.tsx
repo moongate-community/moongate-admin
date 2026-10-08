@@ -1,3 +1,4 @@
+import { useAccountSafety } from './AccountSafetyProvider';
 import { useState } from 'react';
 import { useAuth } from '../../app/AuthProvider';
 import { useResource } from '../../app/useResource';
@@ -16,10 +17,12 @@ export function AccountsPage() {
     const [size, setSize] = useState(50);
     const [cursors, setCursors] = useState([0]);
     const [notice, setNotice] = useState('');
-    const [uncertain, setUncertain] = useState('');
+    const safety = useAccountSafety();
+    const uncertain = safety.username;
     const cursor = cursors.at(-1)!;
     const page = useResource(
         async (signal) => {
+            const version = safety.version;
             const result = (
                 await auth.authorizedRequest<AccountPage>('/api/accounts?pageSize=' + size + '&afterAccountId=' + cursor, {
                     signal,
@@ -33,6 +36,7 @@ export function AccountsPage() {
                 result.nextAfterAccountId > 4294967295
             )
                 throw new ApiError(0, { code: 'invalid_response' });
+            if (!signal.aborted) safety.recordRefresh(version);
             return result;
         },
         [size, cursor, auth.generation],
@@ -51,7 +55,7 @@ export function AccountsPage() {
                 </div>
                 <CreateAccountDialog
                     disabled={!!uncertain}
-                    onUnknown={setUncertain}
+                    onUnknown={safety.markUncertain}
                     onVerify={verify}
                     onCreated={(account) => {
                         setNotice('Account created: ' + account.username.trim());
@@ -70,7 +74,14 @@ export function AccountsPage() {
                         Verify the account list before trying again. Username:{' '}
                         <span className="font-medium">{uncertain}</span>
                     </p>
-                    <Button variant="outline" disabled={page.loading || !!page.error} onClick={() => setUncertain('')}>
+                    <Button variant="outline" disabled={page.loading} onClick={verify}>
+                        Verify account list
+                    </Button>
+                    <Button
+                        variant="outline"
+                        disabled={page.loading || !!page.error || !safety.fresh}
+                        onClick={safety.acknowledge}
+                    >
                         I verified the account list
                     </Button>
                 </div>

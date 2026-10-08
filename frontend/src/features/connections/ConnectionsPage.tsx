@@ -86,11 +86,7 @@ export function ConnectionsPage() {
             setError(e);
             if (e instanceof ApiError && e.status === 412)
                 setBlocked('Connections changed. Reload the latest configuration before saving.');
-            if (
-                !(e instanceof ApiError) ||
-                e.mutationOutcomeUnknown ||
-                (e.code === 'invalid_response' && (e.status === 0 || e.status < 300))
-            ) {
+            if (!(e instanceof ApiError) || e.mutationOutcomeUnknown || e.code === 'invalid_response') {
                 setBlocked('The save result is unknown. Check the latest configuration before trying again.');
                 try {
                     await auth.authorizedRequest('/api/auth/session', { signal: controller.current.signal });

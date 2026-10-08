@@ -21,6 +21,8 @@ public class Program
         );
         builder.Services.AddMoongateAdmin(builder.Configuration, builder.Environment);
         var app = builder.Build();
+        app.UseMoongateFrontend();
+        app.UseRouting();
         app.UseMiddleware<AdminRequestAuditMiddleware>();
         app.UseExceptionHandler();
         app.Use(async (context, next) =>
@@ -57,8 +59,6 @@ public class Program
                 await next(context);
             }
         );
-        app.UseMoongateFrontend();
-        app.UseRouting();
         app.UseDevelopmentSwagger();
         app.UseAuthentication();
         app.UseAuthorization();
