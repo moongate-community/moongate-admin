@@ -260,3 +260,23 @@
     margin: 0;
   }
 }
+@layer components {
+  .native-select {
+    @apply flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50;
+  }
+  .entry-page {
+    @apply min-h-screen flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-24 p-4 sm:p-10;
+  }
+  .entry-brand {
+    @apply flex flex-col items-center;
+  }
+  .pixel-art {
+    image-rendering: pixelated;
+  }
+  .eyebrow {
+    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground;
+  }
+  .page-title {
+    @apply text-2xl sm:text-3xl font-semibold tracking-tight;
+  }
+}
