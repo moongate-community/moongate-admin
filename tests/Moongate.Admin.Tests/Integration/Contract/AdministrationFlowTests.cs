@@ -5,6 +5,7 @@ using System.Text.Json;
 using Moongate.Admin.Tests.TestSupport.Authentication;
 using Moongate.Admin.Tests.TestSupport.Grpc;
 using Moongate.Admin.Tests.TestSupport.Hosting;
+using Serilog.Events;
 
 namespace Moongate.Admin.Tests.Integration.Contract;
 
@@ -37,10 +38,19 @@ public class AdministrationFlowTests
         );
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/accounts/8/revoke-sessions", null)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/accounts?pageSize=" + marker)).StatusCode);
+        grpc.Authority.LoseCreateResponse = true;
+        Assert.Equal(HttpStatusCode.GatewayTimeout, (await client.PostAsJsonAsync("/api/accounts", new { username = "Unknown", password = marker })).StatusCode);
+        grpc.Authority.LoseCreateResponse = false;
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/logout", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/session")).StatusCode);
         var audit = factory.Logs.Events.ToArray();
         Assert.Contains(audit, entry => entry.MessageTemplate.Text.Contains("Administration operation"));
+        foreach (var operation in new[] { "/api/auth/login", "/api/servers", "/api/accounts", "/api/accounts/{id}/revoke-sessions", "/api/auth/logout" })
+        {
+            Assert.Contains(audit, entry => entry.Properties.TryGetValue("Operation", out var value) && value is ScalarValue { Value: string route } && route == operation);
+        }
+
+        Assert.Contains(audit, entry => entry.Properties.TryGetValue("Operation", out var operation) && operation is ScalarValue { Value: "/api/accounts" } && entry.Properties.TryGetValue("Status", out var status) && status is ScalarValue { Value: 504 });
         var logged = string.Join("\n", audit.Select(entry => entry.RenderMessage() + entry.Exception?.ToString()));
         Assert.DoesNotContain(marker, logged);
         Assert.DoesNotContain(grpc.Authority.Token, logged);

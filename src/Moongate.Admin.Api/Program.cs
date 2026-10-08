@@ -21,6 +21,8 @@ public class Program
         );
         builder.Services.AddMoongateAdmin(builder.Configuration, builder.Environment);
         var app = builder.Build();
+        app.UseMoongateFrontend();
+        app.UseRouting();
         app.UseMiddleware<AdminRequestAuditMiddleware>();
         app.UseExceptionHandler();
         app.Use(async (context, next) =>
@@ -66,16 +68,6 @@ public class Program
             app.MapOpenApi().AllowAnonymous();
         }
 
-        app.MapFallback(
-                "/{**path}",
-                context =>
-                {
-                    context.Response.StatusCode = StatusCodes.Status404NotFound;
-                    return Task.CompletedTask;
-                }
-            )
-            .AllowAnonymous()
-            .ExcludeFromDescription();
         await app.RunAsync();
     }
 }

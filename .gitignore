@@ -615,3 +615,8 @@ website/.docs-stage-*/
 
 # Cooperative development migration generation locks
 **/.moongate-generation.lock
+
+# Frontend and generated host assets
+/frontend/playwright-report/
+/frontend/test-results/
+/src/Moongate.Admin.Api/wwwroot/frontend/

@@ -4,7 +4,7 @@
 
 Keep the REST backend and administration frontend in this repository. Moongate itself lives in a separate repository and exposes the `moongate.admin.v1` gRPC interface.
 
-The .NET 10 backend and its tests are implemented. Frontend application code is deferred; `frontend/public` currently holds copied branding icons. See `docs/backend.md` for implemented behavior and operating instructions.
+The .NET 10 backend and its tests are implemented. The Vite/React frontend lives in `frontend/`, with memory-only JWT sessions and shadcn/ui branding. See `docs/backend.md` and `docs/frontend.md` for implemented behavior and operating instructions.
 
 ## Architecture
 
@@ -31,3 +31,11 @@ The .NET 10 backend and its tests are implemented. Frontend application code is 
 - Keep plans and design specifications outside the repository, under the user's plans directory.
 - Keep credentials in the designated secret store and inject them at runtime.
 - Branch from `develop` and open pull requests into `develop`. Reserve `main` for releases.
+
+## Frontend
+
+- Persist only the non-secret theme preference. Keep JWTs, setup keys, passwords and protected data in memory.
+- Abort obsolete requests and preserve generation checks; candidate probe401 requires separate current-session validation.
+- Retain strong quoted ETags and drafts on conflict. Unknown mutations require explicit reconciliation; never retry automatically.
+- Build with `scripts/build-frontend.sh` before publishing. Only `wwwroot/frontend` is generated; preserve other operator files.
+- Run frontend typecheck, tests, lint/format, build and Playwright alongside backend tests.
