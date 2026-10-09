@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Moongate.Admin.Api.Data.Config;
+using Moongate.Admin.Api.Data.Servers;
 using Moongate.Admin.Api.Data.Sessions;
 using Moongate.Admin.Api.Interfaces.Upstream;
 
@@ -10,6 +11,8 @@ public static class ServerEndpointRouteBuilderExtensions
     public static IEndpointRouteBuilder MapAdminServers(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/auth/session", SessionAsync).RequireAuthorization();
+        endpoints.MapGet("/api/servers", ListAsync).RequireAuthorization();
+        endpoints.MapGet("/api/servers/{id}", GetAsync).RequireAuthorization();
         return endpoints;
     }
 
@@ -20,5 +23,25 @@ public static class ServerEndpointRouteBuilderExtensions
         var session = context.GetAdminSession();
         await client.GetServerInfoAsync(options.Value.AuthenticationEndpointId, session.AccessToken, cancellationToken);
         return TypedResults.Ok(new SessionResponse { Account = session.Account, ExpiresAt = session.ExpiresAt });
+    }
+
+    private static async Task<IResult> ListAsync(
+        HttpContext context, IMoongateAdminClient client, IOptions<MoongateOptions> options, CancellationToken cancellationToken
+    )
+    {
+        var session = context.GetAdminSession();
+        await client.GetServerInfoAsync(options.Value.AuthenticationEndpointId, session.AccessToken, cancellationToken);
+        return TypedResults.Ok(
+            options.Value.Endpoints.Select(endpoint => new ServerSummaryResponse { Id = endpoint.Id, Label = endpoint.Label })
+                .ToArray()
+        );
+    }
+
+    private static async Task<IResult> GetAsync(
+        string id, HttpContext context, IMoongateAdminClient client, CancellationToken cancellationToken
+    )
+    {
+        var session = context.GetAdminSession();
+        return TypedResults.Ok(await client.GetServerInfoAsync(id, session.AccessToken, cancellationToken));
     }
 }

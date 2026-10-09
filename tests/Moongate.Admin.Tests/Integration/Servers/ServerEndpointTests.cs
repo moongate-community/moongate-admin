@@ -1,0 +1,90 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Grpc.Core;
+using Moongate.Admin.Contracts.V1;
+using Moongate.Admin.Tests.TestSupport.Authentication;
+using Moongate.Admin.Tests.TestSupport.Grpc;
+using Moongate.Admin.Tests.TestSupport.Hosting;
+
+namespace Moongate.Admin.Tests.Integration.Servers;
+
+public class ServerEndpointTests
+{
+    [Theory]
+    [InlineData(AccountType.Regular, ServerMode.Login, "login")]
+    [InlineData(AccountType.GameMaster, ServerMode.Game, "game")]
+    [InlineData(AccountType.Administrator, ServerMode.Standalone, "standalone")]
+    public async Task Reads_ValidRole_ReturnsConfiguredServer(AccountType role, ServerMode mode, string expectedMode)
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync(new FakeAdminAuthority { Role = role });
+        await using var selected = await AdminGrpcFixture.StartAsync(grpc.Authority, mode: mode, instanceId: "fixture-selected");
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        factory.Settings["Moongate:Endpoints:1:Id"] = "selected";
+        factory.Settings["Moongate:Endpoints:1:Label"] = "Selected";
+        factory.Settings["Moongate:Endpoints:1:Address"] = selected.Address;
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/servers");
+        Assert.Equal("login", list[0].GetProperty("id").GetString());
+        Assert.Equal("Selected", list[1].GetProperty("label").GetString());
+        Assert.False(list[0].TryGetProperty("address", out _));
+        var server = await client.GetFromJsonAsync<JsonElement>("/api/servers/selected");
+        Assert.Equal("fixture-selected", server.GetProperty("instanceId").GetString());
+        Assert.Equal(expectedMode, server.GetProperty("mode").GetString());
+        Assert.Equal("18446744073709551615", server.GetProperty("uptimeSeconds").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/servers/missing")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("%01")]
+    [InlineData("a%20b")]
+    public async Task Read_OddServerId_ReturnsNotFound(string id)
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync();
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/servers/" + id)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/servers/" + new string('x', 5000))).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/auth/session")]
+    [InlineData("/api/servers")]
+    [InlineData("/api/servers/login")]
+    public async Task Read_Anonymous_ReturnsUnauthorized(string path)
+    {
+        await using var factory = new AdminApiFactory();
+        var response = await AuthenticatedApiClient.Create(factory).GetAsync(path);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(response.Headers.Location);
+    }
+
+    [Theory]
+    [InlineData("/api/servers")]
+    [InlineData("/api/servers/login")]
+    public async Task Read_RevokedToken_ReturnsUnauthorizedAndInvalidatesJwt(string path)
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync();
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(path)).StatusCode);
+        grpc.Authority.RevokeAll();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
+        grpc.Authority.IssueToken();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Read_Outage_ReturnsServiceUnavailable()
+    {
+        await using var grpc = await AdminGrpcFixture.StartAsync();
+        await using var factory = new AdminApiFactory();
+        factory.UseGrpc(grpc);
+        var client = await AuthenticatedApiClient.CreateAsync(factory);
+        grpc.Authority.Failure = StatusCode.Unavailable;
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/api/servers/login")).StatusCode);
+    }
+}
