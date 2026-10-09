@@ -23,6 +23,12 @@ public class AdminApiFactory : WebApplicationFactory<Program>
     public string EnvironmentName { get; set; } = "Development";
     public Func<HttpMessageHandler>? GrpcHandler { get; set; }
 
+    public void UseGrpc(Grpc.AdminGrpcFixture fixture)
+    {
+        Settings["Moongate:Endpoints:0:Address"] = fixture.Address;
+        Settings["Moongate:AllowInsecureLoopback"] = "true";
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(EnvironmentName);
