@@ -10,9 +10,9 @@ public static class ServerEndpointRouteBuilderExtensions
 {
     public static IEndpointRouteBuilder MapAdminServers(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/auth/session", SessionAsync).RequireAuthorization();
-        endpoints.MapGet("/api/servers", ListAsync).RequireAuthorization();
-        endpoints.MapGet("/api/servers/{id}", GetAsync).RequireAuthorization();
+        endpoints.MapGet("/api/auth/session", SessionAsync).RequireAuthorization().Produces<SessionResponse>();
+        endpoints.MapGet("/api/servers", ListAsync).RequireAuthorization().Produces<ServerSummaryResponse[]>();
+        endpoints.MapGet("/api/servers/{id}", GetAsync).RequireAuthorization().Produces<ServerInfoResponse>();
         return endpoints;
     }
 

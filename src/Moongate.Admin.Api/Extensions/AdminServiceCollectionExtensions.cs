@@ -9,6 +9,7 @@ using Moongate.Admin.Api.Interfaces.Upstream;
 using Moongate.Admin.Api.Internal;
 using Moongate.Admin.Api.Services.Authentication;
 using Moongate.Admin.Api.Services.Config;
+using Moongate.Admin.Api.Services.Documentation;
 using Moongate.Admin.Api.Services.Errors;
 using Moongate.Admin.Api.Services.Serialization;
 using Moongate.Admin.Api.Services.Upstream;
@@ -94,6 +95,12 @@ public static class AdminServiceCollectionExtensions
                 options.SerializerOptions.Converters.Add(
                     new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)
                 );
+            }
+        );
+        services.AddOpenApi(options =>
+            {
+                options.AddSchemaTransformer<AdminSchemaTransformer>();
+                options.AddDocumentTransformer<AdminOpenApiTransformer>();
             }
         );
         return services;

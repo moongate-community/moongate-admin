@@ -17,4 +17,21 @@ public class HostTests
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("ok", body.GetProperty("status").GetString());
     }
+
+    [Fact]
+    public async Task Start_EmptyConfiguration_ServesLivenessWithoutContactingUpstream()
+    {
+        await using var factory = new AdminApiFactory();
+        factory.Settings.Clear();
+        Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync("/health/live")).StatusCode);
+    }
+
+    [Fact]
+    public void Start_InvalidConfiguration_FailsStartup()
+    {
+        var factory = new AdminApiFactory();
+        factory.Settings["Moongate:AuthenticationEndpointId"] = "missing";
+        Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+        factory.Dispose();
+    }
 }

@@ -1,4 +1,6 @@
 using Moongate.Admin.Api.Extensions;
+using Moongate.Admin.Api.Services.Errors;
+using Moongate.Admin.Api.Services.Http;
 using Serilog;
 using Serilog.Events;
 
@@ -10,10 +12,18 @@ builder.Services.AddSerilog((services, configuration) => configuration.MinimumLe
 );
 builder.Services.AddMoongateAdmin(builder.Configuration, builder.Environment);
 var app = builder.Build();
+app.UseMiddleware<AdminRequestAuditMiddleware>();
 app.UseExceptionHandler();
+app.UseMiddleware<ApiTransportMiddleware>();
+app.UseDevelopmentSwagger();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapMoongateAdmin();
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi().AllowAnonymous();
+}
+
 app.MapFallback(
         "/{**path}",
         context =>
