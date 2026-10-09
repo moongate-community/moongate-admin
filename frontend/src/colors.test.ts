@@ -67,3 +67,11 @@ describe.each([
     expect(contrast(palette[fg], palette[bg])).toBeGreaterThanOrEqual(minimum);
   });
 });
+
+describe("typography", () => {
+  it("uses the system font stack, like moongate.sh, and ships no web font", () => {
+    expect(css).toMatch(/--font-sans:\s*ui-sans-serif,\s*system-ui/);
+    expect(css).not.toContain("@fontsource");
+    expect(css).not.toContain("Geist");
+  });
+});
