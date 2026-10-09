@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { listAccounts } from "@/api/accounts";
+import { CreateAccountDialog } from "@/pages/accounts/CreateAccountDialog";
+import { RevokeSessionsButton } from "@/pages/accounts/RevokeSessionsButton";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ export function AccountsPage() {
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Accounts</h2>
+        <CreateAccountDialog />
       </div>
       {query.isPending ? <Skeleton className="h-40 w-full" /> : null}
       {query.isError ? <ErrorState error={query.error} onRetry={() => void query.refetch()} /> : null}
@@ -50,7 +53,9 @@ export function AccountsPage() {
                   <TableCell>{account.canAccessApi ? <Badge>yes</Badge> : <Badge variant="secondary">no</Badge>}</TableCell>
                   <TableCell>{account.isLocked ? <Badge variant="destructive">locked</Badge> : "no"}</TableCell>
                   <TableCell>{new Date(account.createdAt).toLocaleString()}</TableCell>
-                  <TableCell />
+                  <TableCell>
+                    <RevokeSessionsButton account={account} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
