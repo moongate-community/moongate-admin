@@ -38,6 +38,10 @@ Rules, checked at startup (invalid configuration fails startup):
 
 An empty section is valid: the process starts without contacting any server, and login returns 503 `configuration_required`. Configuration changes need a restart.
 
+## Serving the frontend
+
+When `Frontend:Path` (default `../../frontend/dist`, relative to the content root, which is the API project when running from the repo; use an absolute path in deployments) contains an `index.html`, the host serves the built frontend from the same origin. Existing files are served directly, `index.html` is sent `no-store`, and files under `/assets` are cached as immutable. Unmatched GET requests without a file extension fall back to `index.html` so deep links work. `/api`, `/health`, `/swagger` and `/openapi` never fall back, and non-GET requests and missing files with an extension return 404. If the directory has no `index.html`, the host behaves exactly as without a frontend.
+
 ## Sign in and call the API
 
 1. `POST /api/auth/login` with JSON `username` and `password` over HTTPS. Take credentials from your secret store at runtime; never put them in files, scripts or logs.

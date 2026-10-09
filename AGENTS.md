@@ -2,7 +2,7 @@
 
 ## Scope
 
-The .NET 10 REST API lives in `src/Moongate.Admin.Api`; Moongate itself is a separate repository exposing the `moongate.admin.v1` gRPC interface. The frontend is deferred.
+The .NET 10 REST API lives in `src/Moongate.Admin.Api`; Moongate itself is a separate repository exposing the `moongate.admin.v1` gRPC interface. The React frontend lives in `frontend/` and calls only the REST API.
 
 ## Architecture
 
@@ -12,6 +12,7 @@ The .NET 10 REST API lives in `src/Moongate.Admin.Api`; Moongate itself is a sep
 - Never accept every certificate; validate trust and hostname. No automatic retry of mutations.
 - Do not connect to Moongate's PostgreSQL or Redis.
 - Server addresses come only from configuration (appsettings/environment).
+- The frontend keeps the JWT in memory only, never retries mutations and mirrors the API's input limits.
 
 ## Code and verification
 
