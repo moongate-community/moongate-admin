@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Moongate.Admin.Api/Moongate.Admin.Api.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Moongate.Admin.Tests/Moongate.Admin.Tests.csproj" />
-  </Folder>
-</Solution>
