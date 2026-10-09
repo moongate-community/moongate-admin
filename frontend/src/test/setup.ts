@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
+import { sessionStore } from "@/auth/sessionStore";
 import { server } from "@/test/server";
 
 window.HTMLElement.prototype.scrollIntoView = () => undefined;
@@ -25,6 +26,7 @@ window.matchMedia ??= ((query: string) => ({
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   server.resetHandlers();
+  sessionStore.clear();
   cleanup();
 });
 afterAll(() => server.close());
