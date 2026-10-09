@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moongate.Admin.Api.Internal;
+using Microsoft.Extensions.Logging;
 using Moongate.Admin.Api.Services.Errors;
+using Moongate.Admin.Tests.TestSupport.Logging;
 
 namespace Moongate.Admin.Tests.Integration.Errors;
 
@@ -49,5 +51,17 @@ public class ProblemDetailsTests
         Assert.Equal(500, context.Response.StatusCode);
         context.Response.Body.Position = 0;
         Assert.DoesNotContain("secret-detail", await new StreamReader(context.Response.Body).ReadToEndAsync());
+    }
+
+    [Fact]
+    public async Task Handle_UnexpectedException_LogsTheExceptionForDiagnosis()
+    {
+        await using var provider = new ServiceCollection().AddLogging().AddOptions().BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = provider, TraceIdentifier = "c" };
+        context.Response.Body = new MemoryStream();
+        var logger = new CapturingLogger<AdminApiExceptionHandler>();
+        var failure = new InvalidOperationException("boom");
+        await new AdminApiExceptionHandler(logger).TryHandleAsync(context, failure, CancellationToken.None);
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, failure));
     }
 }

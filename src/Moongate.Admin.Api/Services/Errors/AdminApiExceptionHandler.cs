@@ -73,6 +73,11 @@ public sealed class AdminApiExceptionHandler : IExceptionHandler
             extra["localSessionCleared"] = true;
         }
 
+        if (status == StatusCodes.Status500InternalServerError)
+        {
+            _logger.LogError(exception, "Unexpected administration failure, correlation {CorrelationId}", context.TraceIdentifier);
+        }
+
         _logger.LogWarning("Administration request failed with {Code} correlation {CorrelationId}", code, context.TraceIdentifier);
         await ProblemResponses.WriteAsync(context, status, code, extra);
         return true;

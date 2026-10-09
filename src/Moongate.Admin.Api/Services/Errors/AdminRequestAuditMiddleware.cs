@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Moongate.Admin.Api.Services.Http;
 
 namespace Moongate.Admin.Api.Services.Errors;
 
@@ -24,7 +25,7 @@ public sealed class AdminRequestAuditMiddleware
         {
             if (context.Request.Path.StartsWithSegments("/api"))
             {
-                var operation = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "unmapped";
+                var operation = context.Items[ApiTransportMiddleware.OperationItem] as string ?? "unmapped";
                 _logger.LogInformation(
                     "Administration operation {Operation} account {AccountId} status {Status} correlation {CorrelationId}",
                     operation,
