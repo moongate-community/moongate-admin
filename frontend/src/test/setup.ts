@@ -27,6 +27,9 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   server.resetHandlers();
   sessionStore.clear();
+  localStorage.clear();
+  document.documentElement.className = "";
+  document.documentElement.style.colorScheme = "";
   cleanup();
 });
 afterAll(() => server.close());

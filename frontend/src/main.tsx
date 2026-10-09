@@ -4,10 +4,10 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AppProviders } from "@/AppProviders";
 import { createQueryClient } from "@/queryClient";
 import { routes } from "@/routes";
-import { applySystemTheme } from "@/theme";
+import { applyTheme } from "@/theme";
 import "./index.css";
 
-applySystemTheme();
+applyTheme();
 const router = createBrowserRouter(routes);
 const queryClient = createQueryClient();
 

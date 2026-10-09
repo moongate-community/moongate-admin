@@ -41,7 +41,12 @@ export function LoginPage() {
   return (
     <div className="flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
-        <CardHeader>
+        <CardHeader className="items-center">
+          <img
+            src="/moongate_logo.png"
+            alt="Moongate"
+            className="mb-2 w-40 [image-rendering:pixelated]"
+          />
           <CardTitle>Sign in to Moongate Admin</CardTitle>
         </CardHeader>
         <CardContent>
