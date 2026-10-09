@@ -485,3 +485,9 @@ data/
 .worktrees/
 .superpowers/
 .codegraph/
+
+frontend/node_modules/
+frontend/dist/
+.superpowers/
+.worktrees/
+.codegraph/
