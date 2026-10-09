@@ -15,7 +15,8 @@ public class AdminApiFactory : WebApplicationFactory<Program>
         ["Moongate:AuthenticationEndpointId"] = "login",
         ["Moongate:Endpoints:0:Id"] = "login",
         ["Moongate:Endpoints:0:Label"] = "Login",
-        ["Moongate:Endpoints:0:Address"] = "https://127.0.0.1:2590"
+        ["Moongate:Endpoints:0:Address"] = "https://127.0.0.1:2590",
+        ["Frontend:Path"] = Path.Combine(Path.GetTempPath(), "moongate-admin-no-frontend")
     };
 
     public MemoryLogSink Logs { get; } = new();

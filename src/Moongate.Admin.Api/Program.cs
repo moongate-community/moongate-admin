@@ -24,16 +24,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().AllowAnonymous();
 }
 
-app.MapFallback(
-        "/{**path}",
-        context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return Task.CompletedTask;
-        }
-    )
-    .AllowAnonymous()
-    .ExcludeFromDescription();
+app.MapFrontendFallback();
 await app.RunAsync();
 
 public partial class Program
