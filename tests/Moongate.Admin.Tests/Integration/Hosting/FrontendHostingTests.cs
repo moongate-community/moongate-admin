@@ -48,6 +48,28 @@ public class FrontendHostingTests
     }
 
     [Theory]
+    [InlineData("/servers/eu.login")]
+    [InlineData("/servers/game.1")]
+    public async Task DeepLinkWithDotInSegment_FallsBackToIndex(string path)
+    {
+        using var directory = new TemporaryFrontendDirectory();
+        await using var factory = Create(directory);
+        var response = await AuthenticatedApiClient.Create(factory).GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("spa-index-marker", await response.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData("/missing.png")]
+    [InlineData("/assets/anything.unknownext")]
+    public async Task MissingKnownOrAssetFile_IsNotFound(string path)
+    {
+        using var directory = new TemporaryFrontendDirectory();
+        await using var factory = Create(directory);
+        Assert.Equal(HttpStatusCode.NotFound, (await AuthenticatedApiClient.Create(factory).GetAsync(path)).StatusCode);
+    }
+
+    [Theory]
     [InlineData("/api/nope")]
     [InlineData("/health/nope")]
     [InlineData("/swagger/nope")]

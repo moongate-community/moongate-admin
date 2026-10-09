@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createAccount } from "@/api/accounts";
@@ -35,6 +35,7 @@ export function CreateAccountDialog() {
   const [unknownOutcome, setUnknownOutcome] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const submitting = useRef(false);
   const {
     register,
     control,
@@ -51,6 +52,9 @@ export function CreateAccountDialog() {
       reset(defaults);
       setOpen(false);
     },
+    onSettled: () => {
+      submitting.current = false;
+    },
     onError: (cause) => {
       if (cause instanceof ApiError && cause.mutationOutcomeUnknown) {
         setUnknownOutcome(true);
@@ -63,9 +67,10 @@ export function CreateAccountDialog() {
   });
 
   const onSubmit = handleSubmit((values) => {
-    if (mutation.isPending) {
+    if (submitting.current) {
       return;
     }
+    submitting.current = true;
     setError(null);
     setUnknownOutcome(false);
     mutation.mutate({

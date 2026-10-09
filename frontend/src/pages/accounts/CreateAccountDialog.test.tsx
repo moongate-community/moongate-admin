@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
@@ -132,6 +132,28 @@ describe("CreateAccountDialog", () => {
     await user.type(screen.getByLabelText("Username"), "once");
     await user.type(screen.getByLabelText("Password"), "a-long-password");
     await user.dblClick(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(calls).toBe(1);
+  });
+
+  it("sends exactly one request when two submits fire before React re-renders", async () => {
+    useList();
+    let calls = 0;
+    server.use(
+      http.post(api("/accounts"), async () => {
+        calls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return HttpResponse.json({ ...adminAccount, accountId: 11, username: "sync" }, { status: 201 });
+      })
+    );
+    const user = userEvent.setup();
+    renderApp("/accounts");
+    await openDialog(user);
+    await user.type(screen.getByLabelText("Username"), "sync");
+    await user.type(screen.getByLabelText("Password"), "a-long-password");
+    const submit = screen.getByRole("button", { name: "Create" });
+    fireEvent.click(submit);
+    fireEvent.click(submit);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(calls).toBe(1);
   });

@@ -38,19 +38,22 @@ public static class FrontendApplicationBuilderExtensions
                     if (Path.HasExtension(path.Value))
                     {
                         var file = files.GetFileInfo(path.Value!);
-                        if (!file.Exists || file.PhysicalPath is null)
+                        if (file.Exists && file.PhysicalPath is not null)
+                        {
+                            context.Response.ContentType = ContentTypes.TryGetContentType(file.Name, out var type)
+                                ? type
+                                : "application/octet-stream";
+                            context.Response.Headers.CacheControl = path.StartsWithSegments("/assets")
+                                ? "public, max-age=31536000, immutable"
+                                : "no-cache";
+                            return context.Response.SendFileAsync(file.PhysicalPath);
+                        }
+
+                        if (path.StartsWithSegments("/assets") || ContentTypes.TryGetContentType(path.Value!, out _))
                         {
                             context.Response.StatusCode = StatusCodes.Status404NotFound;
                             return Task.CompletedTask;
                         }
-
-                        context.Response.ContentType = ContentTypes.TryGetContentType(file.Name, out var type)
-                            ? type
-                            : "application/octet-stream";
-                        context.Response.Headers.CacheControl = path.StartsWithSegments("/assets")
-                            ? "public, max-age=31536000, immutable"
-                            : "no-cache";
-                        return context.Response.SendFileAsync(file.PhysicalPath);
                     }
 
                     context.Response.Headers.CacheControl = "no-store";

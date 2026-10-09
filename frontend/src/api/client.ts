@@ -38,7 +38,12 @@ export async function apiRequest<T>(
     if (cause instanceof DOMException && cause.name === "AbortError") {
       throw cause;
     }
-    throw new ApiError({ status: 0, code: "network_error", message: "Network error." });
+    throw new ApiError({
+      status: 0,
+      code: "network_error",
+      message: "Network error.",
+      mutationOutcomeUnknown: method.toUpperCase() !== "GET"
+    });
   }
 
   if (!response.ok) {

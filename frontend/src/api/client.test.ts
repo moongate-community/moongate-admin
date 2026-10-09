@@ -104,3 +104,17 @@ describe("apiRequest", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("apiRequest network failures on mutations", () => {
+  it("flags an unknown outcome for a non-GET network error, not for GET", async () => {
+    server.use(
+      http.post(api("/accounts"), () => HttpResponse.error()),
+      http.get(api("/servers"), () => HttpResponse.error())
+    );
+    const post = (await apiRequest("POST", "/accounts", {}).catch((e: unknown) => e)) as ApiError;
+    const get = (await apiRequest("GET", "/servers").catch((e: unknown) => e)) as ApiError;
+    expect(post.code).toBe("network_error");
+    expect(post.mutationOutcomeUnknown).toBe(true);
+    expect(get.mutationOutcomeUnknown).toBe(false);
+  });
+});
